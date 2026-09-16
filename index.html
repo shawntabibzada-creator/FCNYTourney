@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tourney">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>FCNY Tourney</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <h1>FCNY Tourney</h1>
+  <span id="saveIndicator" class="save-indicator">Saved</span>
+</header>
+
+<main id="app">
+
+  <!-- TEAMS -->
+  <section id="page-teams" class="page">
+    <form id="addTeamForm" class="row-form">
+      <input id="teamNameInput" type="text" placeholder="Team name" required autocomplete="off">
+      <button type="submit">Add</button>
+    </form>
+    <ul id="teamList" class="list"></ul>
+  </section>
+
+  <!-- GROUPS -->
+  <section id="page-groups" class="page hidden">
+    <div id="groupsIndex">
+      <form id="addGroupForm" class="row-form">
+        <input id="groupNameInput" type="text" placeholder="Group name (e.g. Group A)" required autocomplete="off">
+        <button type="submit">Add</button>
+      </form>
+      <ul id="groupList" class="list"></ul>
+    </div>
+
+    <div id="groupDetail" class="hidden">
+      <button id="backToGroups" class="link-btn">&larr; All groups</button>
+      <h2 id="groupDetailName"></h2>
+
+      <h3>Teams in group</h3>
+      <div id="groupTeamAssign" class="chip-row"></div>
+      <ul id="groupTeamList" class="list"></ul>
+
+      <h3>Standings</h3>
+      <div class="table-wrap">
+        <table class="standings">
+          <thead>
+            <tr>
+              <th class="col-team">Team</th><th>P</th><th>W</th><th>D</th><th>L</th>
+              <th>GF</th><th>GA</th><th>GD</th><th>Pts</th>
+            </tr>
+          </thead>
+          <tbody id="standingsBody"></tbody>
+        </table>
+      </div>
+
+      <h3>Add Result</h3>
+      <form id="addMatchForm" class="match-form">
+        <select id="matchHome" required></select>
+        <input id="matchHomeScore" type="number" min="0" inputmode="numeric" placeholder="0">
+        <span class="vs">vs</span>
+        <input id="matchAwayScore" type="number" min="0" inputmode="numeric" placeholder="0">
+        <select id="matchAway" required></select>
+        <button type="submit">Add</button>
+      </form>
+
+      <h3>Results</h3>
+      <ul id="matchList" class="list"></ul>
+    </div>
+  </section>
+
+  <!-- BRACKET -->
+  <section id="page-bracket" class="page hidden">
+    <form id="addRoundForm" class="row-form">
+      <input id="roundNameInput" type="text" placeholder="Round name (e.g. Quarterfinal)" required autocomplete="off">
+      <button type="submit">Add Round</button>
+    </form>
+    <div id="bracketWrap" class="bracket-wrap"></div>
+  </section>
+
+</main>
+
+<nav class="tabbar">
+  <button class="tab-btn active" data-page="teams">Teams</button>
+  <button class="tab-btn" data-page="groups">Groups</button>
+  <button class="tab-btn" data-page="bracket">Bracket</button>
+</nav>
+
+<script src="app.js"></script>
+</body>
+</html>
