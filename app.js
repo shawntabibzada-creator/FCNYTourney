@@ -582,6 +582,10 @@
     var form = document.getElementById("addMatchForm");
     var hasEnoughTeams = group.teamIds.length >= 2;
     Array.prototype.forEach.call(form.elements, function (el) { el.disabled = !hasEnoughTeams; });
+
+    // A disabled form with no explanation just looks broken.
+    var hint = document.getElementById("matchFormHint");
+    if (hint) hint.classList.toggle("hidden", hasEnoughTeams);
   }
 
   document.getElementById("addMatchForm").addEventListener("submit", function (e) {
