@@ -1,20 +1,20 @@
 :root {
   color-scheme: light;
-  /* FCNY club colors: the crest's azure on white. White cards sit on a pale
-     blue-grey ground so they read as objects. --accent is darkened from the
-     crest blue so white text on it stays legible; --accent-bright is the
-     crest blue itself, kept for washes and large marks. */
-  --bg: #eef3f8;
+  /* FCNY club colors: brand blue on white. Cards are white on a near-white
+     ground so they still read as objects. --accent is the brand blue used
+     for fills and marks; --accent-text is that same hue darkened only for
+     small text, which needs more contrast against white than a fill does. */
+  --bg: #f5f9fd;
   --surface: #ffffff;
-  --surface-2: #e4edf6;
-  --border: #ccdae7;
+  --surface-2: #e8f1fb;
+  --border: #cfe0f2;
   --text: #11212f;
   --text-dim: #4d6577;
-  --accent: #0c5f90;
-  --accent-bright: #1795db;
+  --accent: #178fff;
+  --accent-text: #0b60ba;
   /* Opaque rather than an alpha tint, so the contrast of text sitting on it
      is a fixed known value instead of depending on whatever is behind it. */
-  --accent-wash: #dbe8f4;
+  --accent-wash: #e3f0ff;
   --win: #1a7f3c;
   --draw: #a06b00;
   --loss: #c0392b;
@@ -58,7 +58,7 @@ html, body {
 .topbar h1 {
   font-size: 18px;
   margin: 0;
-  color: var(--accent);
+  color: var(--accent-text);
   letter-spacing: -0.01em;
 }
 
@@ -87,7 +87,7 @@ html, body {
   padding: 10px 16px;
   background: var(--accent-wash);
   border-bottom: 1px solid var(--border);
-  border-left: 4px solid var(--accent-bright);
+  border-left: 4px solid var(--accent);
   cursor: pointer;
 }
 .active-banner-label {
@@ -105,7 +105,7 @@ html, body {
   font-weight: 700;
 }
 .active-banner .switch-hint {
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 700;
   font-size: 13px;
   white-space: nowrap;
@@ -237,7 +237,7 @@ button.danger:active { color: var(--loss); }
 
 button.icon-btn {
   background: transparent;
-  color: var(--accent);
+  color: var(--accent-text);
   padding: 11px 14px;
   font-size: 16px;
   font-weight: 600;
@@ -252,7 +252,7 @@ button.icon-btn {
 
 .link-btn {
   background: none;
-  color: var(--accent);
+  color: var(--accent-text);
   border: none;
   padding: 8px 0 16px;
   font-size: 15px;
@@ -367,7 +367,7 @@ table.standings th.pts, table.standings td.pts {
 
 table.standings tr:last-child td { border-bottom: none; }
 table.standings td.col-team { font-weight: 600; }
-table.standings td.pts { font-weight: 700; color: var(--accent); }
+table.standings td.pts { font-weight: 700; color: var(--accent-text); }
 
 .match-form {
   display: flex;
@@ -504,7 +504,7 @@ table.standings td.pts { font-weight: 700; color: var(--accent); }
 .add-match-btn {
   width: 100%;
   background: var(--surface-2);
-  color: var(--accent);
+  color: var(--accent-text);
   border: 1px dashed var(--border);
   margin-top: 4px;
 }
@@ -547,7 +547,7 @@ table.standings td.pts { font-weight: 700; color: var(--accent); }
 }
 
 .tab-btn.active {
-  color: var(--accent);
+  color: var(--accent-text);
   background: var(--surface-2);
-  border-top-color: var(--accent-bright);
+  border-top-color: var(--accent);
 }

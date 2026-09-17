@@ -3,8 +3,8 @@
   "short_name": "Tourney",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#eef3f8",
-  "theme_color": "#0e6fa8",
+  "background_color": "#f5f9fd",
+  "theme_color": "#178fff",
   "orientation": "portrait",
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
