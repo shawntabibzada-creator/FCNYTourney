@@ -1,17 +1,22 @@
 :root {
   color-scheme: light;
-  /* FCNY club colors: brand blue on white. Cards are white on a near-white
-     ground so they still read as objects. */
-  --bg: #f5f9fd;
+  /* Brand blue is the ground the whole app sits on; white is what sits on
+     top of it. Two text contexts follow from that: --on-brand for anything
+     drawn straight onto the blue, --text for anything inside a white card. */
+  --bg: #178fff;
+  --accent: #178fff;
   --surface: #ffffff;
   --surface-2: #e8f1fb;
   --border: #cfe0f2;
   --text: #11212f;
   --text-dim: #4d6577;
-  --accent: #178fff;
-  /* Opaque rather than an alpha tint, so the contrast of text sitting on it
-     is a fixed known value instead of depending on whatever is behind it. */
-  --accent-wash: #e3f0ff;
+  --on-brand: #ffffff;
+  /* Solid white, not a dimmed white. Hierarchy on the blue comes from size
+     and weight instead, because lowering opacity here costs legibility that
+     this ground cannot spare. */
+  --on-brand-dim: #ffffff;
+  --on-brand-line: rgba(255, 255, 255, 0.28);
+  --on-brand-fill: rgba(255, 255, 255, 0.16);
   --win: #1a7f3c;
   --draw: #a06b00;
   --loss: #c0392b;
@@ -25,7 +30,7 @@ html, body {
   margin: 0;
   padding: 0;
   background: var(--bg);
-  color: var(--text);
+  color: var(--on-brand);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
@@ -48,31 +53,32 @@ html, body {
   align-items: center;
   justify-content: space-between;
   padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  border-bottom: 1px solid var(--on-brand-line);
 }
 
 .topbar h1 {
   font-size: 18px;
   margin: 0;
-  color: var(--accent);
+  color: var(--on-brand);
   letter-spacing: -0.01em;
 }
 
 .save-indicator {
   font-size: 12px;
-  color: var(--text-dim);
-  transition: opacity 0.3s ease, color 0.3s ease;
-  opacity: 0.7;
+  color: var(--on-brand-dim);
+  transition: color 0.3s ease;
 }
 .save-indicator.flash {
-  color: var(--win);
-  opacity: 1;
+  color: var(--on-brand);
+  font-weight: 700;
 }
 .save-indicator.save-failed {
-  color: var(--loss);
-  opacity: 1;
+  background: var(--loss);
+  color: #fff;
   font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
 }
 
 .active-banner {
@@ -82,14 +88,14 @@ html, body {
   justify-content: space-between;
   gap: 10px;
   padding: 10px 16px;
-  background: var(--accent-wash);
-  border-bottom: 1px solid var(--border);
-  border-left: 4px solid var(--accent);
+  background: var(--on-brand-fill);
+  border-bottom: 1px solid var(--on-brand-line);
+  border-left: 4px solid var(--on-brand);
   cursor: pointer;
 }
 .active-banner-label {
   display: block;
-  color: var(--text-dim);
+  color: var(--on-brand-dim);
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
@@ -102,7 +108,7 @@ html, body {
   font-weight: 700;
 }
 .active-banner .switch-hint {
-  color: var(--accent);
+  color: var(--on-brand);
   font-weight: 700;
   font-size: 13px;
   white-space: nowrap;
@@ -118,7 +124,7 @@ html, body {
 .empty-state {
   text-align: center;
   padding: 40px 0;
-  color: var(--text-dim);
+  color: var(--on-brand-dim);
 }
 .empty-state p { margin: 0 0 16px; }
 /* The Groups heading sits inside its empty state (the other tabs keep theirs
@@ -126,15 +132,17 @@ html, body {
    title hangs in the middle while every other tab's sits left. */
 .empty-state .page-title {
   text-align: left;
-  color: var(--text);
+  color: var(--on-brand);
 }
 
 .hint-text {
-  color: var(--text-dim);
+  color: var(--on-brand-dim);
   font-size: 13px;
   margin: -8px 0 16px;
   line-height: 1.4;
 }
+/* Inside a white card the same hint sits on white, so it flips back. */
+.list .hint-text, #groupDetail .hint-text { color: var(--text-dim); }
 
 .backup-row {
   display: flex;
@@ -144,9 +152,9 @@ html, body {
 }
 
 button.secondary {
-  background: var(--surface-2);
-  color: var(--text);
-  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--on-brand);
+  border: 1px solid var(--on-brand-line);
 }
 
 .badge {
@@ -211,12 +219,12 @@ input[type="number"] {
 }
 
 button {
-  background: var(--accent);
-  color: white;
+  background: var(--surface);
+  color: var(--accent);
   border: none;
   border-radius: var(--radius);
   padding: 10px 16px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -242,14 +250,16 @@ button.icon-btn {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  /* currentColor so the ring is white on the blue ground and blue inside
+     a white card, without needing a rule per context. */
+  outline: 2px solid currentColor;
   outline-offset: 2px;
   border-radius: 4px;
 }
 
 .link-btn {
   background: none;
-  color: var(--accent);
+  color: var(--on-brand);
   border: none;
   padding: 8px 0 16px;
   font-size: 15px;
@@ -276,8 +286,10 @@ button.icon-btn {
   gap: 8px;
 }
 
+/* Cards are white islands on the blue, so text inside them flips to dark. */
 .list li {
   background: var(--surface);
+  color: var(--text);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 12px 14px;
@@ -286,6 +298,7 @@ button.icon-btn {
   justify-content: space-between;
   gap: 10px;
 }
+.list li.empty-hint { color: var(--text-dim); }
 
 .list li .name {
   flex: 1;
@@ -301,26 +314,29 @@ button.icon-btn {
 }
 
 .chip {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  background: transparent;
+  border: 1px solid var(--on-brand-line);
   border-radius: 999px;
   padding: 8px 14px;
   font-size: 14px;
-  color: var(--text-dim);
+  color: var(--on-brand);
   cursor: pointer;
 }
 .chip.selected {
-  background: var(--accent);
-  color: white;
-  border-color: var(--accent);
+  background: var(--surface);
+  color: var(--accent);
+  border-color: var(--surface);
+  font-weight: 700;
 }
 
 h2 { font-size: 20px; margin: 8px 0 12px; }
-h3 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); margin: 20px 0 10px; }
+h3 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--on-brand-dim); margin: 20px 0 10px; }
 
 .table-wrap {
   overflow-x: auto;
   margin-bottom: 8px;
+  background: var(--surface);
+  color: var(--text);
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
@@ -374,7 +390,7 @@ table.standings td.pts { font-weight: 700; color: var(--accent); }
   margin-bottom: 16px;
 }
 .match-form select { flex: 1; min-width: 90px; }
-.match-form .vs { color: var(--text-dim); font-size: 13px; }
+.match-form .vs { color: var(--on-brand-dim); font-size: 13px; }
 .match-form button { flex-basis: 100%; margin-top: 4px; }
 
 /* Needs `li` in the selector to outweigh `.list li`, which sets align-items
@@ -426,6 +442,7 @@ table.standings td.pts { font-weight: 700; color: var(--accent); }
 }
 
 .round-block {
+  color: var(--text);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 12px;
@@ -445,6 +462,7 @@ table.standings td.pts { font-weight: 700; color: var(--accent); }
 }
 
 .bracket-match {
+  color: var(--text);
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -478,6 +496,7 @@ table.standings td.pts { font-weight: 700; color: var(--accent); }
 }
 
 .bracket-name {
+  color: var(--text);
   flex: 1;
   font-size: 14px;
   overflow-wrap: anywhere;
@@ -507,7 +526,7 @@ table.standings td.pts { font-weight: 700; color: var(--accent); }
 }
 
 .empty-hint {
-  color: var(--text-dim);
+  color: var(--on-brand-dim);
   font-size: 14px;
   padding: 20px 4px;
   text-align: center;
@@ -516,8 +535,8 @@ table.standings td.pts { font-weight: 700; color: var(--accent); }
 .tabbar {
   flex: 0 0 auto;
   display: flex;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
+  background: var(--bg);
+  border-top: 1px solid var(--on-brand-line);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -531,7 +550,7 @@ table.standings td.pts { font-weight: 700; color: var(--accent); }
   border: none;
   border-top: 2px solid transparent;
   border-radius: 0;
-  color: var(--text-dim);
+  color: var(--on-brand-dim);
   padding: 10px 4px 8px;
   font-weight: 600;
   font-size: 12px;
@@ -543,8 +562,12 @@ table.standings td.pts { font-weight: 700; color: var(--accent); }
   flex: 0 0 auto;
 }
 
+/* Selected tab inverts to a solid white block with blue type. A translucent
+   white fill under white text lightens its own background and costs contrast;
+   the full inversion reads as selected at a glance instead. */
 .tab-btn.active {
   color: var(--accent);
-  background: var(--surface-2);
-  border-top-color: var(--accent);
+  background: var(--surface);
+  border-top-color: var(--surface);
+  font-weight: 800;
 }
