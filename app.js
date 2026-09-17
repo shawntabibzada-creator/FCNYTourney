@@ -52,6 +52,10 @@
       var legacyRaw = localStorage.getItem(LEGACY_KEY);
       if (legacyRaw) {
         var migrated = migrateLegacy(JSON.parse(legacyRaw));
+        // Write the migrated copy BEFORE dropping the legacy key. Dropping it
+        // first leaves the only copy in memory, so opening the app and closing
+        // it without editing anything (nothing calls save()) loses everything.
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
         localStorage.removeItem(LEGACY_KEY);
         return migrated;
       }
@@ -67,8 +71,13 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       flashSaved();
     } catch (e) {
+      // Storage full or blocked. Everything since the last good save exists
+      // only in memory, so this has to be loud rather than a grey status word.
       var ind = document.getElementById("saveIndicator");
-      if (ind) ind.textContent = "Save failed";
+      if (ind) {
+        ind.textContent = "NOT SAVED";
+        ind.classList.add("save-failed");
+      }
     }
   }
 
@@ -77,6 +86,7 @@
     var ind = document.getElementById("saveIndicator");
     if (!ind) return;
     ind.textContent = "Saved";
+    ind.classList.remove("save-failed");
     ind.classList.add("flash");
     clearTimeout(flashTimer);
     flashTimer = setTimeout(function () {
@@ -272,8 +282,11 @@
     }
     var del = e.target.closest('[data-action="delete-ag"]');
     if (del) {
-      if (!confirm("Remove this age group and everything in it (teams, groups, bracket)?")) return;
       var id = del.dataset.id;
+      var doomed = state.ageGroups.find(function (a) { return a.id === id; });
+      if (!doomed) return;
+      if (!confirm('Remove "' + doomed.name + '" and everything in it (' +
+        doomed.teams.length + ' teams, ' + doomed.groups.length + ' groups, and its bracket)?')) return;
       state.ageGroups = state.ageGroups.filter(function (a) { return a.id !== id; });
       if (state.activeAgeGroupId === id) {
         state.activeAgeGroupId = state.ageGroups[0] ? state.ageGroups[0].id : null;
@@ -584,8 +597,8 @@
     if (!homeId || !awayId) return;
     if (homeId === awayId) { alert("Pick two different teams."); return; }
 
-    var homeScore = homeScoreRaw === "" ? null : Math.max(0, parseInt(homeScoreRaw, 10));
-    var awayScore = awayScoreRaw === "" ? null : Math.max(0, parseInt(awayScoreRaw, 10));
+    var homeScore = homeScoreRaw === "" ? null : Math.max(0, parseInt(homeScoreRaw, 10) || 0);
+    var awayScore = awayScoreRaw === "" ? null : Math.max(0, parseInt(awayScoreRaw, 10) || 0);
 
     group.matches.push({ id: uid(), homeId: homeId, awayId: awayId, homeScore: homeScore, awayScore: awayScore });
 
@@ -690,14 +703,24 @@
   }
 
   function computeWinner(ag, m) {
-    if (m.winnerId) return m.winnerId;
     var t1 = resolveTeamId(ag, m.team1Id);
     var t2 = resolveTeamId(ag, m.team2Id);
-    if (t1 && t2 && m.score1 !== null && m.score1 !== undefined &&
+    if (!t1 || !t2 || t1 === t2) return null;
+    // A manually picked winner only stands while it still names one of the two
+    // teams actually in the match. A standings slot can re-resolve to someone
+    // else after a group score changes, and the old pick must not survive that.
+    if (m.winnerId) return (m.winnerId === t1 || m.winnerId === t2) ? m.winnerId : null;
+    if (m.score1 !== null && m.score1 !== undefined &&
         m.score2 !== null && m.score2 !== undefined && m.score1 !== m.score2) {
       return m.score1 > m.score2 ? t1 : t2;
     }
     return null;
+  }
+
+  function isSameTeamBothSides(ag, m) {
+    var t1 = resolveTeamId(ag, m.team1Id);
+    var t2 = resolveTeamId(ag, m.team2Id);
+    return !!(t1 && t2 && t1 === t2);
   }
 
   function isDrawMatch(m) {
@@ -708,7 +731,7 @@
   function drawPickerHtmlFor(ag, roundId, m) {
     var t1 = resolveTeamId(ag, m.team1Id);
     var t2 = resolveTeamId(ag, m.team2Id);
-    if (!t1 || !t2) return "";
+    if (!t1 || !t2 || t1 === t2) return "";
     return '<span class="bracket-name" style="color:var(--draw);">Tied. Pick a winner:</span>' +
       '<select data-field="winnerId" data-round="' + roundId + '" data-match="' + m.id + '">' +
         '<option value="">--</option>' +
@@ -736,6 +759,9 @@
       pickerSlot.style.display = draw ? "" : "none";
       pickerSlot.innerHTML = draw ? drawPickerHtmlFor(ag, round.id, m) : "";
     }
+
+    var warnEl = matchEl.querySelector(".match-warn");
+    if (warnEl) warnEl.style.display = isSameTeamBothSides(ag, m) ? "" : "none";
   }
 
   function renderBracket() {
@@ -754,6 +780,7 @@
         var t1 = resolveTeamId(ag, m.team1Id);
         var t2 = resolveTeamId(ag, m.team2Id);
         var isDraw = isDrawMatch(m);
+        var sameTeam = isSameTeamBothSides(ag, m);
 
         return '<div class="bracket-match" data-round="' + round.id + '" data-match="' + m.id + '">' +
           '<div class="bracket-slot' + (winnerId && winnerId === t1 ? " winner" : "") + '">' +
@@ -768,6 +795,7 @@
           '<div class="draw-picker-slot"' + (isDraw ? '' : ' style="display:none;"') + '>' +
             drawPickerHtmlFor(ag, round.id, m) +
           '</div>' +
+          '<div class="match-warn"' + (sameTeam ? '' : ' style="display:none;"') + '>Same team on both sides.</div>' +
           '<div class="match-actions">' +
             '<button class="danger" data-action="delete-bmatch" data-round="' + round.id + '" data-match="' + m.id + '">Delete matchup</button>' +
           '</div>' +
@@ -802,6 +830,7 @@
     if (delMatch) {
       var r2 = ag.bracket.rounds.find(function (r) { return r.id === delMatch.dataset.round; });
       if (!r2) return;
+      if (!confirm("Delete this matchup?")) return;
       r2.matches = r2.matches.filter(function (m) { return m.id !== delMatch.dataset.match; });
       save();
       renderBracket();

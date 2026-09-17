@@ -62,6 +62,11 @@ html, body {
   color: var(--win);
   opacity: 1;
 }
+.save-indicator.save-failed {
+  color: var(--loss);
+  opacity: 1;
+  font-weight: 700;
+}
 
 .active-banner {
   flex: 0 0 auto;
@@ -206,15 +211,15 @@ button:active { opacity: 0.8; }
 button.danger {
   background: transparent;
   color: var(--loss);
-  padding: 6px 10px;
+  padding: 11px 14px;
   font-weight: 500;
 }
 
 button.icon-btn {
   background: transparent;
   color: var(--text-dim);
-  padding: 6px 10px;
-  font-size: 18px;
+  padding: 11px 14px;
+  font-size: 16px;
   line-height: 1;
 }
 
@@ -288,21 +293,38 @@ h3 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; color: 
 table.standings {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
-  min-width: 480px;
+  font-size: 13px;
+  min-width: 320px;
+  font-variant-numeric: tabular-nums;
 }
 
 table.standings th, table.standings td {
-  padding: 10px 8px;
+  padding: 9px 3px;
   text-align: center;
   border-bottom: 1px solid var(--border);
 }
 
 table.standings th.col-team, table.standings td.col-team {
   text-align: left;
+  padding-left: 10px;
   position: sticky;
   left: 0;
   background: var(--surface);
+  /* Capped so a long club name cannot squeeze the numeric columns off the
+     edge. Long names wrap to a second line instead. */
+  max-width: 108px;
+  overflow-wrap: anywhere;
+}
+
+/* Team pins left, Points pins right. Points is the number everyone asks for,
+   so it stays on screen even on a narrow phone where the middle columns
+   (W/D/L/GF/GA) have to scroll. */
+table.standings th.pts, table.standings td.pts {
+  position: sticky;
+  right: 0;
+  background: var(--surface);
+  padding-right: 10px;
+  box-shadow: inset 1px 0 0 var(--border);
 }
 
 table.standings tr:last-child td { border-bottom: none; }
@@ -344,10 +366,19 @@ table.standings td.pts { font-weight: 700; color: var(--accent); }
   overflow-wrap: anywhere;
   font-size: 14px;
 }
+/* Edit and Delete sit side by side on a match row, so they get real space
+   between them. At 4px apart a mistap deletes a result instead of editing it. */
 .match-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 4px;
+  gap: 16px;
+}
+
+.match-warn {
+  color: var(--draw);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 0 2px;
 }
 
 .bracket-wrap {
