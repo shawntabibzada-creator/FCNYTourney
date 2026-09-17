@@ -16,6 +16,7 @@
 * { box-sizing: border-box; }
 
 html, body {
+  height: 100%;
   margin: 0;
   padding: 0;
   background: var(--bg);
@@ -24,19 +25,24 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
-body {
-  padding-bottom: calc(64px + env(safe-area-inset-bottom));
-  min-height: 100vh;
+/* The whole app is one flex column filling the real screen height, with the
+   nav bar as a normal (not fixed) child. A fixed bar tied to the outer
+   viewport can end up clipped or covered by a host app's own chrome
+   (browser toolbar, or the frame Claude's app renders this page in); a
+   flex child at the bottom of a height:100% column always stays on screen. */
+#appShell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 
 .topbar {
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
 }
@@ -58,25 +64,43 @@ body {
 }
 
 .active-banner {
-  position: sticky;
-  top: calc(45px + env(safe-area-inset-top));
-  z-index: 9;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   padding: 10px 16px;
-  background: var(--surface-2);
+  background: rgba(59, 130, 246, 0.14);
   border-bottom: 1px solid var(--border);
-  font-size: 14px;
-  font-weight: 600;
+  border-left: 4px solid var(--accent);
   cursor: pointer;
+}
+.active-banner-label {
+  display: block;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 1px;
+}
+.active-banner-name {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
 }
 .active-banner .switch-hint {
   color: var(--accent);
-  font-weight: 600;
+  font-weight: 700;
   font-size: 13px;
   white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.page-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 4px 0 16px;
 }
 
 .empty-state {
@@ -126,8 +150,12 @@ button.secondary {
 }
 
 #app {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 16px;
   max-width: 720px;
+  width: 100%;
   margin: 0 auto;
 }
 
@@ -417,28 +445,37 @@ table.standings td.pts { font-weight: 700; color: var(--accent); }
 }
 
 .tabbar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  flex: 0 0 auto;
   display: flex;
   background: var(--surface);
   border-top: 1px solid var(--border);
-  padding-bottom: env(safe-area-inset-bottom);
-  z-index: 10;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .tab-btn {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
   background: none;
   border: none;
+  border-top: 2px solid transparent;
   border-radius: 0;
   color: var(--text-dim);
-  padding: 14px 4px;
+  padding: 10px 4px 8px;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 12px;
+}
+
+.tab-btn svg {
+  width: 21px;
+  height: 21px;
+  flex: 0 0 auto;
 }
 
 .tab-btn.active {
   color: var(--accent);
+  background: var(--surface-2);
+  border-top-color: var(--accent);
 }

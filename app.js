@@ -169,7 +169,7 @@
       var groupName = group ? group.name : "?";
       var actualId = resolveTeamId(ag, ref);
       var suffix = actualId ? teamName(ag, actualId) : "TBD";
-      return groupName + " – " + ordinal(rank) + " (" + suffix + ")";
+      return groupName + " " + ordinal(rank) + " (" + suffix + ")";
     }
     return teamName(ag, ref);
   }
@@ -709,7 +709,7 @@
     var t1 = resolveTeamId(ag, m.team1Id);
     var t2 = resolveTeamId(ag, m.team2Id);
     if (!t1 || !t2) return "";
-    return '<span class="bracket-name" style="color:var(--draw);">Draw &mdash; pick winner:</span>' +
+    return '<span class="bracket-name" style="color:var(--draw);">Tied. Pick a winner:</span>' +
       '<select data-field="winnerId" data-round="' + roundId + '" data-match="' + m.id + '">' +
         '<option value="">--</option>' +
         '<option value="' + t1 + '"' + (m.winnerId === t1 ? " selected" : "") + '>' + escapeHtml(teamName(ag, t1)) + '</option>' +
@@ -718,7 +718,7 @@
   }
 
   // Updates winner highlighting / draw-picker for one matchup in place, without
-  // rebuilding its DOM — rebuilding would blow away focus on an input the
+  // rebuilding its DOM. Rebuilding would blow away focus on an input the
   // person is still typing into (e.g. right after entering the first score).
   function updateMatchVisual(ag, round, m) {
     var matchEl = document.querySelector('.bracket-match[data-match="' + m.id + '"]');
@@ -839,7 +839,7 @@
     }
 
     save();
-    // Targeted update only — a full renderBracket() here would tear down and
+    // Targeted update only. A full renderBracket() here would tear down and
     // recreate every input/select in the bracket, which can steal focus from
     // (or blank out) a field the person is about to tap into next.
     updateMatchVisual(ag, round, match);

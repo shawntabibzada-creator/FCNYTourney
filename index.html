@@ -15,126 +15,150 @@
 </head>
 <body>
 
-<header class="topbar">
-  <h1>FCNY Tourney</h1>
-  <span id="saveIndicator" class="save-indicator">Saved</span>
-</header>
+<div id="appShell">
 
-<div id="activeBanner" class="active-banner hidden" data-action="goto-ages">
-  <span id="activeBannerText"></span>
-  <span class="switch-hint">Switch &rsaquo;</span>
-</div>
+  <header class="topbar">
+    <h1>FCNY Tourney</h1>
+    <span id="saveIndicator" class="save-indicator">Saved</span>
+  </header>
 
-<main id="app">
+  <div id="activeBanner" class="active-banner hidden" data-action="goto-ages">
+    <span>
+      <span class="active-banner-label">Age Group</span>
+      <span class="active-banner-name" id="activeBannerText"></span>
+    </span>
+    <span class="switch-hint">Switch &rsaquo;</span>
+  </div>
 
-  <!-- AGE GROUPS -->
-  <section id="page-ages" class="page">
-    <form id="addAgeGroupForm" class="row-form">
-      <input id="ageGroupNameInput" type="text" placeholder="Age group (e.g. U10 Boys)" required autocomplete="off">
-      <button type="submit">Add</button>
-    </form>
-    <ul id="ageGroupList" class="list"></ul>
+  <main id="app">
 
-    <h3>Backup</h3>
-    <p class="hint-text">Everything is saved on this device only. Export a backup to keep a copy or move it to another phone.</p>
-    <div class="backup-row">
-      <button id="exportBtn" type="button">Export Backup</button>
-      <button id="importBtn" type="button" class="secondary">Restore Backup</button>
-    </div>
-    <input id="importFile" type="file" accept="application/json" class="hidden">
-  </section>
-
-  <!-- TEAMS -->
-  <section id="page-teams" class="page hidden">
-    <div id="teamsEmptyAgeGroup" class="empty-state hidden">
-      <p>No age group selected yet.</p>
-      <button type="button" data-action="goto-ages">Set up an age group</button>
-    </div>
-    <div id="teamsContent">
-      <form id="addTeamForm" class="row-form">
-        <input id="teamNameInput" type="text" placeholder="Team name" required autocomplete="off">
+    <!-- AGE GROUPS -->
+    <section id="page-ages" class="page">
+      <h2 class="page-title">Age Groups</h2>
+      <form id="addAgeGroupForm" class="row-form">
+        <input id="ageGroupNameInput" type="text" placeholder="Age group (e.g. U10 Boys)" required autocomplete="off">
         <button type="submit">Add</button>
       </form>
-      <ul id="teamList" class="list"></ul>
-    </div>
-  </section>
+      <ul id="ageGroupList" class="list"></ul>
 
-  <!-- GROUPS -->
-  <section id="page-groups" class="page hidden">
-    <div id="groupsEmptyAgeGroup" class="empty-state hidden">
-      <p>No age group selected yet.</p>
-      <button type="button" data-action="goto-ages">Set up an age group</button>
-    </div>
-    <div id="groupsContent">
-      <div id="groupsIndex">
-        <form id="addGroupForm" class="row-form">
-          <input id="groupNameInput" type="text" placeholder="Group name (e.g. Group A)" required autocomplete="off">
+      <h3>Backup</h3>
+      <p class="hint-text">Everything is saved on this device only. Export a backup to keep a copy or move it to another phone.</p>
+      <div class="backup-row">
+        <button id="exportBtn" type="button">Export Backup</button>
+        <button id="importBtn" type="button" class="secondary">Restore Backup</button>
+      </div>
+      <input id="importFile" type="file" accept="application/json" class="hidden">
+    </section>
+
+    <!-- TEAMS -->
+    <section id="page-teams" class="page hidden">
+      <h2 class="page-title">Teams</h2>
+      <div id="teamsEmptyAgeGroup" class="empty-state hidden">
+        <p>No age group selected yet.</p>
+        <button type="button" data-action="goto-ages">Set up an age group</button>
+      </div>
+      <div id="teamsContent">
+        <form id="addTeamForm" class="row-form">
+          <input id="teamNameInput" type="text" placeholder="Team name" required autocomplete="off">
           <button type="submit">Add</button>
         </form>
-        <ul id="groupList" class="list"></ul>
+        <ul id="teamList" class="list"></ul>
       </div>
+    </section>
 
-      <div id="groupDetail" class="hidden">
-        <button id="backToGroups" class="link-btn">&larr; All groups</button>
-        <h2 id="groupDetailName"></h2>
-
-        <h3>Teams in group</h3>
-        <div id="groupTeamAssign" class="chip-row"></div>
-        <ul id="groupTeamList" class="list"></ul>
-
-        <h3>Standings</h3>
-        <div class="table-wrap">
-          <table class="standings">
-            <thead>
-              <tr>
-                <th class="col-team">Team</th><th>P</th><th>W</th><th>D</th><th>L</th>
-                <th>GF</th><th>GA</th><th>GD</th><th>Pts</th>
-              </tr>
-            </thead>
-            <tbody id="standingsBody"></tbody>
-          </table>
+    <!-- GROUPS -->
+    <section id="page-groups" class="page hidden">
+      <div id="groupsEmptyAgeGroup" class="empty-state hidden">
+        <h2 class="page-title">Groups</h2>
+        <p>No age group selected yet.</p>
+        <button type="button" data-action="goto-ages">Set up an age group</button>
+      </div>
+      <div id="groupsContent">
+        <div id="groupsIndex">
+          <h2 class="page-title">Groups</h2>
+          <form id="addGroupForm" class="row-form">
+            <input id="groupNameInput" type="text" placeholder="Group name (e.g. Group A)" required autocomplete="off">
+            <button type="submit">Add</button>
+          </form>
+          <ul id="groupList" class="list"></ul>
         </div>
 
-        <h3>Add Result</h3>
-        <form id="addMatchForm" class="match-form">
-          <select id="matchHome" required></select>
-          <input id="matchHomeScore" type="number" min="0" inputmode="numeric" placeholder="0">
-          <span class="vs">vs</span>
-          <input id="matchAwayScore" type="number" min="0" inputmode="numeric" placeholder="0">
-          <select id="matchAway" required></select>
-          <button type="submit">Add</button>
-        </form>
+        <div id="groupDetail" class="hidden">
+          <button id="backToGroups" class="link-btn">&larr; All groups</button>
+          <h2 class="page-title" id="groupDetailName"></h2>
 
-        <h3>Results</h3>
-        <ul id="matchList" class="list"></ul>
+          <h3>Teams in group</h3>
+          <div id="groupTeamAssign" class="chip-row"></div>
+          <ul id="groupTeamList" class="list"></ul>
+
+          <h3>Standings</h3>
+          <div class="table-wrap">
+            <table class="standings">
+              <thead>
+                <tr>
+                  <th class="col-team">Team</th><th>P</th><th>W</th><th>D</th><th>L</th>
+                  <th>GF</th><th>GA</th><th>GD</th><th>Pts</th>
+                </tr>
+              </thead>
+              <tbody id="standingsBody"></tbody>
+            </table>
+          </div>
+
+          <h3>Add Result</h3>
+          <form id="addMatchForm" class="match-form">
+            <select id="matchHome" required></select>
+            <input id="matchHomeScore" type="number" min="0" inputmode="numeric" placeholder="0">
+            <span class="vs">vs</span>
+            <input id="matchAwayScore" type="number" min="0" inputmode="numeric" placeholder="0">
+            <select id="matchAway" required></select>
+            <button type="submit">Add</button>
+          </form>
+
+          <h3>Results</h3>
+          <ul id="matchList" class="list"></ul>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- BRACKET -->
-  <section id="page-bracket" class="page hidden">
-    <div id="bracketEmptyAgeGroup" class="empty-state hidden">
-      <p>No age group selected yet.</p>
-      <button type="button" data-action="goto-ages">Set up an age group</button>
-    </div>
-    <div id="bracketContent">
-      <form id="addRoundForm" class="row-form">
-        <input id="roundNameInput" type="text" placeholder="Round name (e.g. Quarterfinal)" required autocomplete="off">
-        <button type="submit">Add Round</button>
-      </form>
-      <p class="hint-text">Matchups can use a specific team, or a live group-standings slot (e.g. "Group A &ndash; 1st") that auto-updates as results come in.</p>
-      <div id="bracketWrap" class="bracket-wrap"></div>
-    </div>
-  </section>
+    <!-- BRACKET -->
+    <section id="page-bracket" class="page hidden">
+      <h2 class="page-title">Bracket</h2>
+      <div id="bracketEmptyAgeGroup" class="empty-state hidden">
+        <p>No age group selected yet.</p>
+        <button type="button" data-action="goto-ages">Set up an age group</button>
+      </div>
+      <div id="bracketContent">
+        <form id="addRoundForm" class="row-form">
+          <input id="roundNameInput" type="text" placeholder="Round name (e.g. Quarterfinal)" required autocomplete="off">
+          <button type="submit">Add Round</button>
+        </form>
+        <p class="hint-text">Matchups can use a specific team, or a live group-standings slot (e.g. "Group A 1st") that auto-updates as results come in.</p>
+        <div id="bracketWrap" class="bracket-wrap"></div>
+      </div>
+    </section>
 
-</main>
+  </main>
 
-<nav class="tabbar">
-  <button class="tab-btn active" data-page="ages">Ages</button>
-  <button class="tab-btn" data-page="teams">Teams</button>
-  <button class="tab-btn" data-page="groups">Groups</button>
-  <button class="tab-btn" data-page="bracket">Bracket</button>
-</nav>
+  <nav class="tabbar">
+    <button class="tab-btn active" data-page="ages">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M10 3 3 7l7 4 7-4-7-4Z"/><path d="M3 11l7 4 7-4"/><path d="M3 14.5l7 4 7-4"/></svg>
+      Ages
+    </button>
+    <button class="tab-btn" data-page="teams">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><circle cx="7" cy="7" r="3.2"/><circle cx="14" cy="9.2" r="2.6"/></svg>
+      Teams
+    </button>
+    <button class="tab-btn" data-page="groups">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="2.5" y="3.5" width="15" height="13" rx="1.5"/><path d="M2.5 8.7h15M8.2 3.5v13"/></svg>
+      Groups
+    </button>
+    <button class="tab-btn" data-page="bracket">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2.5 5h5.5M2.5 15h5.5M8 5v10M8 10h5.5"/><circle cx="15" cy="10" r="1.6" fill="currentColor" stroke="none"/></svg>
+      Bracket
+    </button>
+  </nav>
+
+</div>
 
 <script src="app.js"></script>
 </body>
