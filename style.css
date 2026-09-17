@@ -1,15 +1,20 @@
 :root {
   color-scheme: dark;
-  --bg: #0f172a;
-  --surface: #16213a;
-  --surface-2: #1c2947;
-  --border: #2a3a5c;
-  --text: #eef1f8;
-  --text-dim: #9aa7c2;
-  --accent: #3b82f6;
-  --win: #22c55e;
-  --draw: #eab308;
-  --loss: #ef4444;
+  /* Club colors, taken from the FCNY crest: crimson and cream on a warm
+     near-black. The neutrals carry a red bias so they sit with the crest
+     rather than reading as a generic cool grey. */
+  --bg: #14100f;
+  --surface: #241d1a;
+  --surface-2: #322825;
+  --border: #4a3b36;
+  --text: #f7f1eb;
+  --text-dim: #ac9e96;
+  --accent: #c8102e;          /* fills: buttons, selected chips */
+  --accent-bright: #f4667b;   /* same hue lifted for text and icons on dark */
+  --accent-wash: rgba(200, 16, 46, 0.15);
+  --win: #4fa463;
+  --draw: #d9a425;
+  --loss: #e05563;
   --radius: 12px;
 }
 
@@ -75,7 +80,7 @@ html, body {
   justify-content: space-between;
   gap: 10px;
   padding: 10px 16px;
-  background: rgba(59, 130, 246, 0.14);
+  background: var(--accent-wash);
   border-bottom: 1px solid var(--border);
   border-left: 4px solid var(--accent);
   cursor: pointer;
@@ -95,7 +100,7 @@ html, body {
   font-weight: 700;
 }
 .active-banner .switch-hint {
-  color: var(--accent);
+  color: var(--accent-bright);
   font-weight: 700;
   font-size: 13px;
   white-space: nowrap;
@@ -110,10 +115,17 @@ html, body {
 
 .empty-state {
   text-align: center;
-  padding: 40px 16px;
+  padding: 40px 0;
   color: var(--text-dim);
 }
 .empty-state p { margin: 0 0 16px; }
+/* The Groups heading sits inside its empty state (the other tabs keep theirs
+   outside), so it has to opt back out of the centering or that one tab's
+   title hangs in the middle while every other tab's sits left. */
+.empty-state .page-title {
+  text-align: left;
+  color: var(--text);
+}
 
 .hint-text {
   color: var(--text-dim);
@@ -220,7 +232,7 @@ button.danger:active { color: var(--loss); }
 
 button.icon-btn {
   background: transparent;
-  color: var(--accent);
+  color: var(--accent-bright);
   padding: 11px 14px;
   font-size: 16px;
   font-weight: 600;
@@ -228,19 +240,30 @@ button.icon-btn {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-bright);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
 .link-btn {
   background: none;
-  color: var(--accent);
+  color: var(--accent-bright);
   border: none;
   padding: 8px 0 16px;
   font-size: 15px;
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
+.link-btn svg { width: 15px; height: 15px; flex: 0 0 auto; }
+
+.active-banner .switch-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.active-banner .switch-hint svg { width: 14px; height: 14px; flex: 0 0 auto; }
 
 .list {
   list-style: none;
@@ -339,7 +362,7 @@ table.standings th.pts, table.standings td.pts {
 
 table.standings tr:last-child td { border-bottom: none; }
 table.standings td.col-team { font-weight: 600; }
-table.standings td.pts { font-weight: 700; color: var(--accent); }
+table.standings td.pts { font-weight: 700; color: var(--accent-bright); }
 
 .match-form {
   display: flex;
@@ -476,7 +499,7 @@ table.standings td.pts { font-weight: 700; color: var(--accent); }
 .add-match-btn {
   width: 100%;
   background: var(--surface-2);
-  color: var(--accent);
+  color: var(--accent-bright);
   border: 1px dashed var(--border);
   margin-top: 4px;
 }
@@ -519,7 +542,7 @@ table.standings td.pts { font-weight: 700; color: var(--accent); }
 }
 
 .tab-btn.active {
-  color: var(--accent);
+  color: var(--accent-bright);
   background: var(--surface-2);
-  border-top-color: var(--accent);
+  border-top-color: var(--accent-bright);
 }
