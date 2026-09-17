@@ -1,9 +1,7 @@
 :root {
   color-scheme: light;
   /* FCNY club colors: brand blue on white. Cards are white on a near-white
-     ground so they still read as objects. --accent is the brand blue used
-     for fills and marks; --accent-text is that same hue darkened only for
-     small text, which needs more contrast against white than a fill does. */
+     ground so they still read as objects. */
   --bg: #f5f9fd;
   --surface: #ffffff;
   --surface-2: #e8f1fb;
@@ -11,7 +9,6 @@
   --text: #11212f;
   --text-dim: #4d6577;
   --accent: #178fff;
-  --accent-text: #0b60ba;
   /* Opaque rather than an alpha tint, so the contrast of text sitting on it
      is a fixed known value instead of depending on whatever is behind it. */
   --accent-wash: #e3f0ff;
@@ -58,7 +55,7 @@ html, body {
 .topbar h1 {
   font-size: 18px;
   margin: 0;
-  color: var(--accent-text);
+  color: var(--accent);
   letter-spacing: -0.01em;
 }
 
@@ -105,7 +102,7 @@ html, body {
   font-weight: 700;
 }
 .active-banner .switch-hint {
-  color: var(--accent-text);
+  color: var(--accent);
   font-weight: 700;
   font-size: 13px;
   white-space: nowrap;
@@ -237,7 +234,7 @@ button.danger:active { color: var(--loss); }
 
 button.icon-btn {
   background: transparent;
-  color: var(--accent-text);
+  color: var(--accent);
   padding: 11px 14px;
   font-size: 16px;
   font-weight: 600;
@@ -252,7 +249,7 @@ button.icon-btn {
 
 .link-btn {
   background: none;
-  color: var(--accent-text);
+  color: var(--accent);
   border: none;
   padding: 8px 0 16px;
   font-size: 15px;
@@ -367,7 +364,7 @@ table.standings th.pts, table.standings td.pts {
 
 table.standings tr:last-child td { border-bottom: none; }
 table.standings td.col-team { font-weight: 600; }
-table.standings td.pts { font-weight: 700; color: var(--accent-text); }
+table.standings td.pts { font-weight: 700; color: var(--accent); }
 
 .match-form {
   display: flex;
@@ -504,7 +501,7 @@ table.standings td.pts { font-weight: 700; color: var(--accent-text); }
 .add-match-btn {
   width: 100%;
   background: var(--surface-2);
-  color: var(--accent-text);
+  color: var(--accent);
   border: 1px dashed var(--border);
   margin-top: 4px;
 }
@@ -547,7 +544,7 @@ table.standings td.pts { font-weight: 700; color: var(--accent-text); }
 }
 
 .tab-btn.active {
-  color: var(--accent-text);
+  color: var(--accent);
   background: var(--surface-2);
   border-top-color: var(--accent);
 }
