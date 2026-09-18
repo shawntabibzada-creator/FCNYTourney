@@ -117,6 +117,10 @@
             <span class="vs">vs</span>
             <input id="matchAwayScore" type="number" min="0" inputmode="numeric" placeholder="0">
             <select id="matchAway" required></select>
+            <div class="match-time-row">
+              <label for="matchTimeInput">Time (optional)</label>
+              <input id="matchTimeInput" type="time">
+            </div>
             <button type="submit">Add</button>
           </form>
 
@@ -138,7 +142,7 @@
           <input id="roundNameInput" type="text" placeholder="Round name (e.g. Quarterfinal)" required autocomplete="off">
           <button type="submit">Add Round</button>
         </form>
-        <p class="hint-text">Matchups can use a specific team, or a live group-standings slot (e.g. "Group A 1st") that auto-updates as results come in.</p>
+        <p class="hint-text">A matchup side can be a specific team, a live group-standings slot (e.g. "Group A 1st"), or the winner of an earlier round's matchup, so winners advance automatically as you go. "Fill from roster" seeds a whole round from your team list in one tap.</p>
         <div id="bracketWrap" class="bracket-wrap"></div>
       </div>
     </section>

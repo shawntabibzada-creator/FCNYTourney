@@ -153,11 +153,43 @@
     return rows;
   }
 
-  // A bracket slot can reference a fixed team ("<teamId>") or a live group
-  // standings position ("std:<groupId>:<rank>") that resolves dynamically as
-  // results come in, e.g. "Group A - 1st".
-  function resolveTeamId(ag, ref) {
-    if (!ref || !ag) return null;
+  function findBracketMatch(ag, matchId) {
+    for (var i = 0; i < ag.bracket.rounds.length; i++) {
+      var found = ag.bracket.rounds[i].matches.find(function (m) { return m.id === matchId; });
+      if (found) return found;
+    }
+    return null;
+  }
+
+  function matchLocation(ag, matchId) {
+    for (var i = 0; i < ag.bracket.rounds.length; i++) {
+      var round = ag.bracket.rounds[i];
+      var idx = round.matches.findIndex(function (m) { return m.id === matchId; });
+      if (idx !== -1) return { round: round, roundIndex: i, matchIndex: idx };
+    }
+    return null;
+  }
+
+  function formatTime(t) {
+    if (!t) return "";
+    var m = /^(\d{1,2}):(\d{2})$/.exec(t);
+    if (!m) return t; // free-typed value from the edit prompt; show as-is
+    var h = parseInt(m[1], 10), min = m[2];
+    var ampm = h >= 12 ? "PM" : "AM";
+    var h12 = h % 12; if (h12 === 0) h12 = 12;
+    return h12 + ":" + min + " " + ampm;
+  }
+
+  // A bracket slot can reference a fixed team ("<teamId>"), a live group
+  // standings position ("std:<groupId>:<rank>"), or the winner of an earlier
+  // bracket matchup ("winner:<matchId>"). Each resolves dynamically as
+  // results come in, e.g. "Group A 1st" or "Winner of Semifinal Match 1".
+  // depth guards against a cycle in a hand-edited backup; the UI itself can
+  // never create one, since a matchup only ever offers winners of rounds that
+  // come strictly before it.
+  function resolveTeamId(ag, ref, depth) {
+    depth = depth || 0;
+    if (!ref || !ag || depth > 20) return null;
     if (ref.indexOf("std:") === 0) {
       var parts = ref.split(":");
       var group = ag.groups.find(function (g) { return g.id === parts[1]; });
@@ -166,6 +198,11 @@
       var rows = computeStandingsArray(ag, group);
       var row = rows[rank - 1];
       return row ? row.id : null;
+    }
+    if (ref.indexOf("winner:") === 0) {
+      var match = findBracketMatch(ag, ref.slice("winner:".length));
+      if (!match) return null;
+      return computeWinner(ag, match, depth + 1);
     }
     return ref;
   }
@@ -180,6 +217,13 @@
       var actualId = resolveTeamId(ag, ref);
       var suffix = actualId ? teamName(ag, actualId) : "TBD";
       return groupName + " " + ordinal(rank) + " (" + suffix + ")";
+    }
+    if (ref.indexOf("winner:") === 0) {
+      var loc = matchLocation(ag, ref.slice("winner:".length));
+      var label = loc ? (loc.round.name + " Match " + (loc.matchIndex + 1)) : "?";
+      var actualId2 = resolveTeamId(ag, ref);
+      var suffix2 = actualId2 ? teamName(ag, actualId2) : "TBD";
+      return "Winner: " + label + " (" + suffix2 + ")";
     }
     return teamName(ag, ref);
   }
@@ -597,6 +641,7 @@
     var awayId = document.getElementById("matchAway").value;
     var homeScoreRaw = document.getElementById("matchHomeScore").value;
     var awayScoreRaw = document.getElementById("matchAwayScore").value;
+    var timeRaw = document.getElementById("matchTimeInput").value;
 
     if (!homeId || !awayId) return;
     if (homeId === awayId) { alert("Pick two different teams."); return; }
@@ -604,7 +649,7 @@
     var homeScore = homeScoreRaw === "" ? null : Math.max(0, parseInt(homeScoreRaw, 10) || 0);
     var awayScore = awayScoreRaw === "" ? null : Math.max(0, parseInt(awayScoreRaw, 10) || 0);
 
-    group.matches.push({ id: uid(), homeId: homeId, awayId: awayId, homeScore: homeScore, awayScore: awayScore });
+    group.matches.push({ id: uid(), homeId: homeId, awayId: awayId, homeScore: homeScore, awayScore: awayScore, time: timeRaw || null });
 
     e.target.reset();
     save();
@@ -622,6 +667,7 @@
     ul.innerHTML = group.matches.slice().reverse().map(function (m) {
       var played = m.homeScore !== null && m.homeScore !== undefined && m.awayScore !== null && m.awayScore !== undefined;
       return '<li class="match-row" data-id="' + m.id + '">' +
+        (m.time ? '<div class="match-time">' + escapeHtml(formatTime(m.time)) + '</div>' : '') +
         '<div class="match-line">' +
           '<span class="match-team">' + escapeHtml(teamName(ag, m.homeId)) + '</span>' +
           '<span class="match-score">' + (played ? m.homeScore + " - " + m.awayScore : "vs") + '</span>' +
@@ -648,8 +694,11 @@
       if (hs === null) return;
       var as = prompt(teamName(ag, match.awayId) + " score:", match.awayScore === null || match.awayScore === undefined ? "" : match.awayScore);
       if (as === null) return;
+      var tm = prompt("Time (e.g. 14:30), leave blank for none:", match.time || "");
+      if (tm === null) return;
       match.homeScore = hs.trim() === "" ? null : Math.max(0, parseInt(hs, 10) || 0);
       match.awayScore = as.trim() === "" ? null : Math.max(0, parseInt(as, 10) || 0);
+      match.time = tm.trim() === "" ? null : tm.trim();
       save();
       renderStandings(ag, group);
       renderMatchList(ag, group);
@@ -683,7 +732,7 @@
     renderBracket();
   });
 
-  function teamOptions(ag, selectedRef) {
+  function teamOptions(ag, selectedRef, currentRoundIndex) {
     var placeholder = '<option value="">Select team</option>';
     var directOpts = ag.teams.map(function (t) {
       return '<option value="' + t.id + '"' + (t.id === selectedRef ? " selected" : "") + '>' + escapeHtml(t.name) + "</option>";
@@ -701,14 +750,35 @@
       groupOptsHtml += '<optgroup label="' + escapeHtml(g.name) + ' standings">' + opts + "</optgroup>";
     });
 
+    // Winners of an earlier round can feed this slot, e.g. picking "Match 1"
+    // in the Semifinal to mean whoever wins the Quarterfinal's first matchup.
+    // Only rounds strictly before this one are offered, which is what keeps
+    // this from ever being able to form a cycle.
+    var winnerOptsHtml = "";
+    if (typeof currentRoundIndex === "number") {
+      ag.bracket.rounds.forEach(function (round, idx) {
+        if (idx >= currentRoundIndex || round.matches.length === 0) return;
+        var opts = round.matches.map(function (m, mIdx) {
+          var ref = "winner:" + m.id;
+          var winnerId = computeWinner(ag, m);
+          var label = "Match " + (mIdx + 1) + (winnerId ? " (" + teamName(ag, winnerId) + ")" : " (TBD)");
+          return '<option value="' + ref + '"' + (ref === selectedRef ? " selected" : "") + '>' + escapeHtml(label) + "</option>";
+        }).join("");
+        winnerOptsHtml += '<optgroup label="' + escapeHtml(round.name) + ' winners">' + opts + "</optgroup>";
+      });
+    }
+
     return placeholder +
       (directOpts ? '<optgroup label="Teams">' + directOpts + "</optgroup>" : "") +
-      groupOptsHtml;
+      groupOptsHtml +
+      winnerOptsHtml;
   }
 
-  function computeWinner(ag, m) {
-    var t1 = resolveTeamId(ag, m.team1Id);
-    var t2 = resolveTeamId(ag, m.team2Id);
+  function computeWinner(ag, m, depth) {
+    depth = depth || 0;
+    if (m.bye) return resolveTeamId(ag, m.team1Id, depth);
+    var t1 = resolveTeamId(ag, m.team1Id, depth);
+    var t2 = resolveTeamId(ag, m.team2Id, depth);
     if (!t1 || !t2 || t1 === t2) return null;
     // A manually picked winner only stands while it still names one of the two
     // teams actually in the match. A standings slot can re-resolve to someone
@@ -744,9 +814,16 @@
       '</select>';
   }
 
-  // Updates winner highlighting / draw-picker for one matchup in place, without
-  // rebuilding its DOM. Rebuilding would blow away focus on an input the
-  // person is still typing into (e.g. right after entering the first score).
+  function eliminatedHtmlFor(ag, m, winnerId, t1, t2) {
+    if (!winnerId || !t1 || !t2 || t1 === t2) return "";
+    var loserId = winnerId === t1 ? t2 : t1;
+    return "Eliminated: " + escapeHtml(teamName(ag, loserId));
+  }
+
+  // Updates winner highlighting / draw-picker / eliminated tag for one
+  // matchup in place, without rebuilding its DOM. Rebuilding would blow away
+  // focus on an input the person is still typing into (e.g. right after
+  // entering the first score).
   function updateMatchVisual(ag, round, m) {
     var matchEl = document.querySelector('.bracket-match[data-match="' + m.id + '"]');
     if (!matchEl) return;
@@ -755,7 +832,9 @@
     var t1 = resolveTeamId(ag, m.team1Id);
     var t2 = resolveTeamId(ag, m.team2Id);
     slots[0].classList.toggle("winner", !!winnerId && winnerId === t1);
+    slots[0].classList.toggle("eliminated", !!winnerId && winnerId !== t1);
     slots[1].classList.toggle("winner", !!winnerId && winnerId === t2);
+    slots[1].classList.toggle("eliminated", !!winnerId && winnerId !== t2);
 
     var pickerSlot = matchEl.querySelector(".draw-picker-slot");
     var draw = isDrawMatch(m);
@@ -766,6 +845,22 @@
 
     var warnEl = matchEl.querySelector(".match-warn");
     if (warnEl) warnEl.style.display = isSameTeamBothSides(ag, m) ? "" : "none";
+
+    var elimEl = matchEl.querySelector(".eliminated-tag");
+    var elimText = eliminatedHtmlFor(ag, m, winnerId, t1, t2);
+    if (elimEl) {
+      elimEl.style.display = elimText ? "" : "none";
+      elimEl.textContent = elimText;
+    }
+
+    // A later round may list this matchup as "Match N (Team)" in its own
+    // team picker. That option isn't focused, so it's safe to refresh its
+    // label here rather than waiting for a full re-render.
+    var idxInRound = round.matches.indexOf(m);
+    var newLabel = "Match " + (idxInRound + 1) + (winnerId ? " (" + teamName(ag, winnerId) + ")" : " (TBD)");
+    document.querySelectorAll('#bracketWrap option[value="winner:' + m.id + '"]').forEach(function (opt) {
+      opt.textContent = newLabel;
+    });
   }
 
   function renderBracket() {
@@ -778,39 +873,64 @@
       return;
     }
 
-    wrap.innerHTML = ag.bracket.rounds.map(function (round) {
-      var matchesHtml = round.matches.map(function (m) {
+    wrap.innerHTML = ag.bracket.rounds.map(function (round, roundIndex) {
+      var matchesHtml = round.matches.map(function (m, mIndex) {
+        var timeInput = '<input type="time" class="bracket-time" data-field="time" data-round="' + round.id + '" data-match="' + m.id + '" value="' + (m.time || "") + '">';
+
+        if (m.bye) {
+          var byeTeamId = resolveTeamId(ag, m.team1Id);
+          return '<div class="bracket-match bye-match" data-round="' + round.id + '" data-match="' + m.id + '">' +
+            '<div class="bracket-match-label">Match ' + (mIndex + 1) + '</div>' +
+            '<div class="bracket-slot winner">' +
+              '<select data-field="team1Id" data-round="' + round.id + '" data-match="' + m.id + '">' + teamOptions(ag, m.team1Id, roundIndex) + '</select>' +
+            '</div>' +
+            '<div class="bye-label">' + (byeTeamId ? escapeHtml(teamName(ag, byeTeamId)) + " gets a bye. Advances automatically." : "Bye. Advances automatically.") + '</div>' +
+            '<div class="match-actions">' +
+              '<button class="danger" data-action="delete-bmatch" data-round="' + round.id + '" data-match="' + m.id + '">Delete matchup</button>' +
+            '</div>' +
+          '</div>';
+        }
+
         var winnerId = computeWinner(ag, m);
         var t1 = resolveTeamId(ag, m.team1Id);
         var t2 = resolveTeamId(ag, m.team2Id);
         var isDraw = isDrawMatch(m);
         var sameTeam = isSameTeamBothSides(ag, m);
+        var elimText = eliminatedHtmlFor(ag, m, winnerId, t1, t2);
 
         return '<div class="bracket-match" data-round="' + round.id + '" data-match="' + m.id + '">' +
-          '<div class="bracket-slot' + (winnerId && winnerId === t1 ? " winner" : "") + '">' +
-            '<select data-field="team1Id" data-round="' + round.id + '" data-match="' + m.id + '">' + teamOptions(ag, m.team1Id) + '</select>' +
+          '<div class="bracket-match-label">Match ' + (mIndex + 1) + (m.time ? ' &middot; ' + escapeHtml(formatTime(m.time)) : '') + '</div>' +
+          '<div class="bracket-slot' + (winnerId && winnerId === t1 ? " winner" : "") + (winnerId && winnerId !== t1 ? " eliminated" : "") + '">' +
+            '<select data-field="team1Id" data-round="' + round.id + '" data-match="' + m.id + '">' + teamOptions(ag, m.team1Id, roundIndex) + '</select>' +
             '<input type="number" min="0" inputmode="numeric" placeholder="-" data-field="score1" data-round="' + round.id + '" data-match="' + m.id + '" value="' + (m.score1 === null || m.score1 === undefined ? "" : m.score1) + '">' +
           '</div>' +
           '<div class="bracket-vs">vs</div>' +
-          '<div class="bracket-slot' + (winnerId && winnerId === t2 ? " winner" : "") + '">' +
-            '<select data-field="team2Id" data-round="' + round.id + '" data-match="' + m.id + '">' + teamOptions(ag, m.team2Id) + '</select>' +
+          '<div class="bracket-slot' + (winnerId && winnerId === t2 ? " winner" : "") + (winnerId && winnerId !== t2 ? " eliminated" : "") + '">' +
+            '<select data-field="team2Id" data-round="' + round.id + '" data-match="' + m.id + '">' + teamOptions(ag, m.team2Id, roundIndex) + '</select>' +
             '<input type="number" min="0" inputmode="numeric" placeholder="-" data-field="score2" data-round="' + round.id + '" data-match="' + m.id + '" value="' + (m.score2 === null || m.score2 === undefined ? "" : m.score2) + '">' +
           '</div>' +
           '<div class="draw-picker-slot"' + (isDraw ? '' : ' style="display:none;"') + '>' +
             drawPickerHtmlFor(ag, round.id, m) +
           '</div>' +
           '<div class="match-warn"' + (sameTeam ? '' : ' style="display:none;"') + '>Same team on both sides.</div>' +
+          '<div class="eliminated-tag"' + (elimText ? '' : ' style="display:none;"') + '>' + elimText + '</div>' +
+          '<div class="bracket-time-row"><label>Time</label>' + timeInput + '</div>' +
           '<div class="match-actions">' +
             '<button class="danger" data-action="delete-bmatch" data-round="' + round.id + '" data-match="' + m.id + '">Delete matchup</button>' +
           '</div>' +
         '</div>';
       }).join("");
 
+      var fillBtn = round.matches.length === 0 && ag.teams.length >= 2
+        ? '<button class="add-match-btn" data-action="fill-roster" data-round="' + round.id + '">Fill from roster (' + ag.teams.length + ' teams)</button>'
+        : '';
+
       return '<div class="round-block" data-round-id="' + round.id + '">' +
         '<div class="round-header"><h4>' + escapeHtml(round.name) + '</h4>' +
           '<button class="danger" data-action="delete-round" data-round="' + round.id + '">Remove round</button>' +
         '</div>' +
         matchesHtml +
+        fillBtn +
         '<button class="add-match-btn" data-action="add-bmatch" data-round="' + round.id + '">+ Add matchup</button>' +
       '</div>';
     }).join("");
@@ -824,7 +944,26 @@
     if (addBtn) {
       var round = ag.bracket.rounds.find(function (r) { return r.id === addBtn.dataset.round; });
       if (!round) return;
-      round.matches.push({ id: uid(), team1Id: null, team2Id: null, score1: null, score2: null, winnerId: null });
+      round.matches.push({ id: uid(), team1Id: null, team2Id: null, score1: null, score2: null, winnerId: null, time: null });
+      save();
+      renderBracket();
+      return;
+    }
+
+    var fillBtn = e.target.closest('[data-action="fill-roster"]');
+    if (fillBtn) {
+      var round3 = ag.bracket.rounds.find(function (r) { return r.id === fillBtn.dataset.round; });
+      if (!round3 || round3.matches.length > 0 || ag.teams.length < 2) return;
+      var newMatches = [];
+      for (var i = 0; i < ag.teams.length; i += 2) {
+        if (i + 1 < ag.teams.length) {
+          newMatches.push({ id: uid(), team1Id: ag.teams[i].id, team2Id: ag.teams[i + 1].id, score1: null, score2: null, winnerId: null, time: null });
+        } else {
+          // Odd team count: the leftover team gets a bye straight into the next round.
+          newMatches.push({ id: uid(), team1Id: ag.teams[i].id, team2Id: null, score1: null, score2: null, winnerId: null, time: null, bye: true });
+        }
+      }
+      round3.matches = newMatches;
       save();
       renderBracket();
       return;
@@ -869,6 +1008,8 @@
       match.winnerId = null;
     } else if (field === "winnerId") {
       match.winnerId = e.target.value || null;
+    } else if (field === "time") {
+      match.time = e.target.value || null;
     }
 
     save();
