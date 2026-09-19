@@ -460,6 +460,15 @@ table.standings td.pts { font-weight: 700; color: var(--accent); }
   gap: 20px;
 }
 
+#bracketBuild .chip-row { margin-bottom: 16px; }
+#bracketBuild button { width: 100%; }
+
+.reset-bracket-btn {
+  width: 100%;
+  margin-top: 20px;
+  border: 1px solid var(--border);
+}
+
 .round-block {
   color: var(--text);
   border: 1px solid var(--border);
@@ -571,14 +580,6 @@ table.standings td.pts { font-weight: 700; color: var(--accent); }
   font-size: 11px;
   color: var(--text-dim);
   padding: 2px 0;
-}
-
-.add-match-btn {
-  width: 100%;
-  background: var(--surface-2);
-  color: var(--accent);
-  border: 1px dashed var(--border);
-  margin-top: 4px;
 }
 
 .empty-hint {

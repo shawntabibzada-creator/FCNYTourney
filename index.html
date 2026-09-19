@@ -138,12 +138,13 @@
         <button type="button" data-action="goto-ages">Set up an age group</button>
       </div>
       <div id="bracketContent">
-        <form id="addRoundForm" class="row-form">
-          <input id="roundNameInput" type="text" placeholder="Round name (e.g. Quarterfinal)" required autocomplete="off">
-          <button type="submit">Add Round</button>
-        </form>
-        <p class="hint-text">A matchup side can be a specific team, a live group-standings slot (e.g. "Group A 1st"), or the winner of an earlier round's matchup, so winners advance automatically as you go. "Fill from roster" seeds a whole round from your team list in one tap.</p>
+        <div id="bracketBuild">
+          <p class="hint-text">Pick the teams playing in the bracket, then generate it. The whole tree is built for you, byes and all, if the count is odd. Score each matchup and the winner moves on by itself.</p>
+          <div id="bracketTeamSelect" class="chip-row"></div>
+          <button id="generateBracketBtn" type="button">Generate Bracket</button>
+        </div>
         <div id="bracketWrap" class="bracket-wrap"></div>
+        <button id="resetBracketBtn" class="danger reset-bracket-btn hidden" type="button">Reset bracket</button>
       </div>
     </section>
 

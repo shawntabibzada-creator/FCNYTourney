@@ -318,6 +318,7 @@
     if (select) {
       state.activeAgeGroupId = select.dataset.id;
       activeGroupId = null;
+      bracketSelectedTeamIds = [];
       document.getElementById("groupDetail").classList.add("hidden");
       document.getElementById("groupsIndex").classList.remove("hidden");
       save();
@@ -335,6 +336,7 @@
       if (state.activeAgeGroupId === id) {
         state.activeAgeGroupId = state.ageGroups[0] ? state.ageGroups[0].id : null;
         activeGroupId = null;
+        bracketSelectedTeamIds = [];
       }
       save();
       renderAll();
@@ -380,6 +382,7 @@
       }
       state = normalizeState(parsed);
       activeGroupId = null;
+      bracketSelectedTeamIds = [];
       save();
       renderAll();
       e.target.value = "";
@@ -441,6 +444,7 @@
         if (m.winnerId === id) m.winnerId = null;
       });
     });
+    bracketSelectedTeamIds = bracketSelectedTeamIds.filter(function (tid) { return tid !== id; });
     save();
     renderTeams();
     renderGroupsIndex();
@@ -719,15 +723,107 @@
 
   /* ---------- BRACKET ---------- */
 
-  document.getElementById("addRoundForm").addEventListener("submit", function (e) {
-    e.preventDefault();
+  // Selection is transient UI state, not saved data: it only matters up until
+  // "Generate Bracket" is pressed, at which point it becomes the real bracket.
+  var bracketSelectedTeamIds = [];
+
+  function roundNameForPosition(fromEnd) {
+    if (fromEnd === 0) return "Final";
+    if (fromEnd === 1) return "Semifinal";
+    if (fromEnd === 2) return "Quarterfinal";
+    return "Round of " + Math.pow(2, fromEnd + 1);
+  }
+
+  // Builds the entire single-elimination tree in one pass, so a decided
+  // result carries forward without anyone building round 2 by hand: every
+  // later round is pre-wired with "winner:<matchId>" references into the
+  // round before it.
+  //
+  // All byes are front-loaded into round 1, padded out to the next power of
+  // two. That matters: if byes were instead handed out fresh each round
+  // (simplest to write, but wrong), the team left over in round 1 can be the
+  // team left over again in round 2, reaching the final having never played
+  // a single match while everyone else won two. Doing it this way means
+  // round 2 onward is always a clean power of two, so nobody advances twice
+  // in a row without playing.
+  function generateBracketRounds(teamIds) {
+    var n = teamIds.length;
+    var bracketSize = 1;
+    while (bracketSize < n) bracketSize *= 2;
+    var byesNeeded = bracketSize - n;
+    var realCount = n - byesNeeded; // always even: 2n - bracketSize, and bracketSize is even for n >= 2
+
+    var round1Matches = [];
+    for (var i = 0; i < realCount; i += 2) {
+      round1Matches.push({ id: uid(), team1Id: teamIds[i], team2Id: teamIds[i + 1], score1: null, score2: null, winnerId: null, time: null });
+    }
+    for (var j = realCount; j < n; j++) {
+      round1Matches.push({ id: uid(), team1Id: teamIds[j], team2Id: null, score1: null, score2: null, winnerId: null, time: null, bye: true });
+    }
+
+    var rounds = [{ id: uid(), name: "", matches: round1Matches }];
+    var entrants = round1Matches.map(function (m) { return "winner:" + m.id; });
+
+    while (entrants.length > 1) {
+      var matches = [];
+      var nextEntrants = [];
+      for (var k = 0; k < entrants.length; k += 2) {
+        var matchId = uid();
+        matches.push({ id: matchId, team1Id: entrants[k], team2Id: entrants[k + 1], score1: null, score2: null, winnerId: null, time: null });
+        nextEntrants.push("winner:" + matchId);
+      }
+      rounds.push({ id: uid(), name: "", matches: matches });
+      entrants = nextEntrants;
+    }
+
+    rounds.forEach(function (round, idx) {
+      round.name = roundNameForPosition(rounds.length - 1 - idx);
+    });
+    return rounds;
+  }
+
+  function renderBracketTeamSelect(ag) {
+    var wrap = document.getElementById("bracketTeamSelect");
+    if (ag.teams.length === 0) {
+      wrap.innerHTML = '<span class="empty-hint">Add teams in the Teams tab first.</span>';
+      return;
+    }
+    wrap.innerHTML = ag.teams.map(function (t) {
+      var selected = bracketSelectedTeamIds.indexOf(t.id) !== -1;
+      return '<span class="chip' + (selected ? " selected" : "") + '" data-action="toggle-bracket-team" data-id="' + t.id + '">' +
+        escapeHtml(t.name) + '</span>';
+    }).join("");
+  }
+
+  document.getElementById("bracketTeamSelect").addEventListener("click", function (e) {
+    var chip = e.target.closest('[data-action="toggle-bracket-team"]');
+    if (!chip) return;
+    var id = chip.dataset.id;
+    var idx = bracketSelectedTeamIds.indexOf(id);
+    if (idx === -1) bracketSelectedTeamIds.push(id);
+    else bracketSelectedTeamIds.splice(idx, 1);
+    var ag = currentAgeGroup();
+    if (ag) renderBracketTeamSelect(ag);
+  });
+
+  document.getElementById("generateBracketBtn").addEventListener("click", function () {
     var ag = currentAgeGroup();
     if (!ag) return;
-    var input = document.getElementById("roundNameInput");
-    var name = input.value.trim();
-    if (!name) return;
-    ag.bracket.rounds.push({ id: uid(), name: name, matches: [] });
-    input.value = "";
+    if (bracketSelectedTeamIds.length < 2) {
+      alert("Pick at least two teams first.");
+      return;
+    }
+    ag.bracket.rounds = generateBracketRounds(bracketSelectedTeamIds);
+    bracketSelectedTeamIds = [];
+    save();
+    renderBracket();
+  });
+
+  document.getElementById("resetBracketBtn").addEventListener("click", function () {
+    var ag = currentAgeGroup();
+    if (!ag) return;
+    if (!confirm("Reset the bracket? This clears every matchup and score you've entered so you can pick teams and generate it again.")) return;
+    ag.bracket.rounds = [];
     save();
     renderBracket();
   });
@@ -866,10 +962,16 @@
   function renderBracket() {
     var ag = currentAgeGroup();
     var wrap = document.getElementById("bracketWrap");
-    if (!ag) { wrap.innerHTML = ""; return; }
+    var buildSection = document.getElementById("bracketBuild");
+    var resetBtn = document.getElementById("resetBracketBtn");
+    if (!ag) { wrap.innerHTML = ""; buildSection.classList.add("hidden"); resetBtn.classList.add("hidden"); return; }
 
-    if (ag.bracket.rounds.length === 0) {
-      wrap.innerHTML = '<p class="empty-hint">No rounds yet. Add a round above (e.g. Quarterfinal, Semifinal, Final) to start your bracket.</p>';
+    var hasBracket = ag.bracket.rounds.length > 0;
+    buildSection.classList.toggle("hidden", hasBracket);
+    resetBtn.classList.toggle("hidden", !hasBracket);
+    if (!hasBracket) {
+      renderBracketTeamSelect(ag);
+      wrap.innerHTML = "";
       return;
     }
 
@@ -885,9 +987,6 @@
               '<select data-field="team1Id" data-round="' + round.id + '" data-match="' + m.id + '">' + teamOptions(ag, m.team1Id, roundIndex) + '</select>' +
             '</div>' +
             '<div class="bye-label">' + (byeTeamId ? escapeHtml(teamName(ag, byeTeamId)) + " gets a bye. Advances automatically." : "Bye. Advances automatically.") + '</div>' +
-            '<div class="match-actions">' +
-              '<button class="danger" data-action="delete-bmatch" data-round="' + round.id + '" data-match="' + m.id + '">Delete matchup</button>' +
-            '</div>' +
           '</div>';
         }
 
@@ -915,79 +1014,15 @@
           '<div class="match-warn"' + (sameTeam ? '' : ' style="display:none;"') + '>Same team on both sides.</div>' +
           '<div class="eliminated-tag"' + (elimText ? '' : ' style="display:none;"') + '>' + elimText + '</div>' +
           '<div class="bracket-time-row"><label>Time</label>' + timeInput + '</div>' +
-          '<div class="match-actions">' +
-            '<button class="danger" data-action="delete-bmatch" data-round="' + round.id + '" data-match="' + m.id + '">Delete matchup</button>' +
-          '</div>' +
         '</div>';
       }).join("");
 
-      var fillBtn = round.matches.length === 0 && ag.teams.length >= 2
-        ? '<button class="add-match-btn" data-action="fill-roster" data-round="' + round.id + '">Fill from roster (' + ag.teams.length + ' teams)</button>'
-        : '';
-
       return '<div class="round-block" data-round-id="' + round.id + '">' +
-        '<div class="round-header"><h4>' + escapeHtml(round.name) + '</h4>' +
-          '<button class="danger" data-action="delete-round" data-round="' + round.id + '">Remove round</button>' +
-        '</div>' +
+        '<div class="round-header"><h4>' + escapeHtml(round.name) + '</h4></div>' +
         matchesHtml +
-        fillBtn +
-        '<button class="add-match-btn" data-action="add-bmatch" data-round="' + round.id + '">+ Add matchup</button>' +
       '</div>';
     }).join("");
   }
-
-  document.getElementById("bracketWrap").addEventListener("click", function (e) {
-    var ag = currentAgeGroup();
-    if (!ag) return;
-
-    var addBtn = e.target.closest('[data-action="add-bmatch"]');
-    if (addBtn) {
-      var round = ag.bracket.rounds.find(function (r) { return r.id === addBtn.dataset.round; });
-      if (!round) return;
-      round.matches.push({ id: uid(), team1Id: null, team2Id: null, score1: null, score2: null, winnerId: null, time: null });
-      save();
-      renderBracket();
-      return;
-    }
-
-    var fillBtn = e.target.closest('[data-action="fill-roster"]');
-    if (fillBtn) {
-      var round3 = ag.bracket.rounds.find(function (r) { return r.id === fillBtn.dataset.round; });
-      if (!round3 || round3.matches.length > 0 || ag.teams.length < 2) return;
-      var newMatches = [];
-      for (var i = 0; i < ag.teams.length; i += 2) {
-        if (i + 1 < ag.teams.length) {
-          newMatches.push({ id: uid(), team1Id: ag.teams[i].id, team2Id: ag.teams[i + 1].id, score1: null, score2: null, winnerId: null, time: null });
-        } else {
-          // Odd team count: the leftover team gets a bye straight into the next round.
-          newMatches.push({ id: uid(), team1Id: ag.teams[i].id, team2Id: null, score1: null, score2: null, winnerId: null, time: null, bye: true });
-        }
-      }
-      round3.matches = newMatches;
-      save();
-      renderBracket();
-      return;
-    }
-
-    var delMatch = e.target.closest('[data-action="delete-bmatch"]');
-    if (delMatch) {
-      var r2 = ag.bracket.rounds.find(function (r) { return r.id === delMatch.dataset.round; });
-      if (!r2) return;
-      if (!confirm("Delete this matchup?")) return;
-      r2.matches = r2.matches.filter(function (m) { return m.id !== delMatch.dataset.match; });
-      save();
-      renderBracket();
-      return;
-    }
-
-    var delRound = e.target.closest('[data-action="delete-round"]');
-    if (delRound) {
-      if (!confirm("Remove this round and its matchups?")) return;
-      ag.bracket.rounds = ag.bracket.rounds.filter(function (r) { return r.id !== delRound.dataset.round; });
-      save();
-      renderBracket();
-    }
-  });
 
   document.getElementById("bracketWrap").addEventListener("change", function (e) {
     var ag = currentAgeGroup();
