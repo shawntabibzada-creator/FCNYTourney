@@ -24,9 +24,7 @@
 window.FCNY_FIREBASE_CONFIG = {
   apiKey: "AIzaSyADwZYsUwMBCXSfvWnbNrnrdS0ugEvy3kI",
   authDomain: "fcny-tourney.firebaseapp.com",
-  // databaseURL: fill this in once Realtime Database is created (step 4
-  // below) - the console shows it at the top of the Realtime Database page,
-  // e.g. "https://fcny-tourney-default-rtdb.<region>.firebasedatabase.app".
+  databaseURL: "https://fcny-tourney-default-rtdb.firebaseio.com",
   projectId: "fcny-tourney",
   storageBucket: "fcny-tourney.firebasestorage.app",
   messagingSenderId: "222690053523",
