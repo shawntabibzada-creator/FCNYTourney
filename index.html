@@ -43,8 +43,11 @@
       </form>
       <ul id="ageGroupList" class="list"></ul>
 
+      <h3>Live Sync</h3>
+      <div id="syncBox"></div>
+
       <h3>Backup</h3>
-      <p class="hint-text">Everything is saved on this device only. Export a backup to keep a copy or move it to another phone.</p>
+      <p class="hint-text">Without Live Sync connected, everything is saved on this device only. Export a backup any time to keep a copy or move it to another phone.</p>
       <div class="backup-row">
         <button id="exportBtn" type="button">Export Backup</button>
         <button id="importBtn" type="button" class="secondary">Restore Backup</button>
@@ -171,6 +174,11 @@
 
 </div>
 
+<!-- Live Sync (optional). No effect unless firebase-config.js has a real
+     project config in it; see that file and README.md to turn it on. -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
+<script src="firebase-config.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

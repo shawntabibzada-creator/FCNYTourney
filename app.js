@@ -63,12 +63,121 @@
     return defaultState();
   }
 
-  var state = load();
+  var state = defaultState();
   var activeGroupId = null; // group detail sub-view within the current age group's Groups tab
 
-  function save() {
+  /* ---------- Live Sync (optional) ----------
+     When firebase-config.js has a real config, multiple devices can share
+     one tournament through a Firebase Realtime Database, keyed by a
+     "tournament code" the organizer makes up and gives to their coaches.
+     With no config (the default), the app behaves exactly as it always has:
+     save() writes to this device's localStorage and nothing else. */
+
+  var TOURNAMENT_CODE_KEY = "fcny_tournament_code";
+  var firebaseEnabled = !!(window.FCNY_FIREBASE_CONFIG && window.firebase && window.firebase.initializeApp);
+  var db = null;
+  if (firebaseEnabled) {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      firebase.initializeApp(window.FCNY_FIREBASE_CONFIG);
+      db = firebase.database();
+    } catch (e) {
+      firebaseEnabled = false;
+      db = null;
+    }
+  }
+  var tournamentCode = firebaseEnabled ? localStorage.getItem(TOURNAMENT_CODE_KEY) : null;
+  var syncRef = null;
+  // Sync writes echo back to every listener, including the one that sent
+  // them. Comparing against the JSON we just sent is how we recognize "this
+  // is our own change coming back" and skip re-rendering for it; without
+  // that, every keystroke would round-trip through the network and redraw
+  // the whole page, stealing focus from whatever the person types next.
+  var lastSyncedJson = null;
+
+  function connectSync(code) {
+    if (!firebaseEnabled || !code) return;
+    if (syncRef) syncRef.off();
+    tournamentCode = code;
+    localStorage.setItem(TOURNAMENT_CODE_KEY, code);
+    syncRef = db.ref("tournaments/" + code);
+
+    syncRef.once("value").then(function (snapshot) {
+      if (snapshot.val()) {
+        // This code already has data (a coach connected first, or you're
+        // rejoining), so adopt it as the shared truth rather than overwriting it.
+        state = normalizeState(snapshot.val());
+      } else {
+        // Brand new code: seed the room with whatever is already on this
+        // device instead of silently discarding it.
+        lastSyncedJson = JSON.stringify(state);
+        syncRef.set(state);
+      }
+      renderAll();
+      syncRef.on("value", function (snap) {
+        var incomingJson = JSON.stringify(snap.val());
+        if (incomingJson === lastSyncedJson) return;
+        lastSyncedJson = incomingJson;
+        state = normalizeState(snap.val() || {});
+        renderAll();
+      });
+      renderSyncStatus();
+    }).catch(function () {
+      alert("Could not connect. Check the code and your Firebase setup, then try again.");
+      tournamentCode = null;
+      localStorage.removeItem(TOURNAMENT_CODE_KEY);
+      renderSyncStatus();
+    });
+  }
+
+  function disconnectSync() {
+    if (syncRef) syncRef.off();
+    syncRef = null;
+    tournamentCode = null;
+    localStorage.removeItem(TOURNAMENT_CODE_KEY);
+    // Persist the live, synced state to this device now that save() will
+    // write to localStorage again; reloading from localStorage instead
+    // would silently discard everything that arrived only over sync.
+    save();
+    renderAll();
+    renderSyncStatus();
+  }
+
+  function renderSyncStatus() {
+    var box = document.getElementById("syncBox");
+    if (!box) return;
+    if (!firebaseEnabled) {
+      box.innerHTML = '<p class="hint-text">Live sync needs a one-time setup by whoever owns this copy of the app. See README.md.</p>';
+      return;
+    }
+    if (tournamentCode) {
+      box.innerHTML =
+        '<div class="sync-connected">' +
+          '<span><span class="active-banner-label">Connected</span><span class="active-banner-name">' + escapeHtml(tournamentCode) + '</span></span>' +
+          '<button class="danger" data-action="disconnect-sync" type="button">Disconnect</button>' +
+        '</div>' +
+        '<p class="hint-text">Anyone who enters this exact code sees and edits this tournament live, on their own phone.</p>';
+    } else {
+      box.innerHTML =
+        '<form id="connectSyncForm" class="row-form">' +
+          '<input id="syncCodeInput" type="text" placeholder="Tournament code (e.g. FCNY2026)" autocomplete="off" required>' +
+          '<button type="submit">Connect</button>' +
+        '</form>' +
+        '<p class="hint-text">Make one up and share it with your coaches. Whoever enters the same code sees and edits the same tournament live.</p>';
+    }
+  }
+
+  function save() {
+    var json = JSON.stringify(state);
+    if (firebaseEnabled && tournamentCode && syncRef) {
+      lastSyncedJson = json;
+      syncRef.set(state).then(flashSaved).catch(function () {
+        var ind = document.getElementById("saveIndicator");
+        if (ind) { ind.textContent = "NOT SAVED"; ind.classList.add("save-failed"); }
+      });
+      return;
+    }
+    try {
+      localStorage.setItem(STORAGE_KEY, json);
       flashSaved();
     } catch (e) {
       // Storage full or blocked. Everything since the last good save exists
@@ -620,12 +729,20 @@
   function renderMatchForm(ag, group) {
     var homeSel = document.getElementById("matchHome");
     var awaySel = document.getElementById("matchAway");
+    // Rebuilding these selects (needed whenever the group's teams change)
+    // would otherwise reset an in-progress pick every time renderAll() runs
+    // for an unrelated reason, e.g. another device's Live Sync update
+    // arriving mid-entry. Keep whichever selection is still valid.
+    var prevHome = homeSel.value;
+    var prevAway = awaySel.value;
     var options = group.teamIds.map(function (id) {
       return '<option value="' + id + '">' + escapeHtml(teamName(ag, id)) + "</option>";
     }).join("");
     var placeholder = '<option value="" disabled selected>Team</option>';
     homeSel.innerHTML = placeholder + options;
     awaySel.innerHTML = placeholder + options;
+    if (prevHome && group.teamIds.indexOf(prevHome) !== -1) homeSel.value = prevHome;
+    if (prevAway && group.teamIds.indexOf(prevAway) !== -1) awaySel.value = prevAway;
 
     var form = document.getElementById("addMatchForm");
     var hasEnoughTeams = group.teamIds.length >= 2;
@@ -1054,8 +1171,27 @@
     updateMatchVisual(ag, round, match);
   });
 
+  document.getElementById("syncBox").addEventListener("submit", function (e) {
+    if (e.target.id !== "connectSyncForm") return;
+    e.preventDefault();
+    var input = document.getElementById("syncCodeInput");
+    var code = input.value.trim();
+    if (!code) return;
+    connectSync(code);
+  });
+
+  document.getElementById("syncBox").addEventListener("click", function (e) {
+    if (e.target.closest('[data-action="disconnect-sync"]')) {
+      if (!confirm("Disconnect from live sync? This device will go back to using only its own local data.")) return;
+      disconnectSync();
+    }
+  });
+
   /* ---------- init ---------- */
 
+  state = load();
   renderAll();
+  if (firebaseEnabled && tournamentCode) connectSync(tournamentCode);
+  renderSyncStatus();
   showPage("ages");
 })();

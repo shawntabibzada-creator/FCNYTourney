@@ -151,6 +151,22 @@ html, body {
   margin-bottom: 24px;
 }
 
+.sync-connected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--on-brand-fill);
+  border: 1px solid var(--on-brand-line);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin-bottom: 8px;
+}
+.sync-connected .active-banner-label,
+.sync-connected .active-banner-name {
+  color: var(--on-brand);
+}
+
 button.secondary {
   background: transparent;
   color: var(--on-brand);
