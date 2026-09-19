@@ -21,17 +21,14 @@
 //      matters.
 //   6. Reload the app. A "Live Sync" box appears on the Ages tab.
 //
-window.FCNY_FIREBASE_CONFIG = null;
-
-// Example of what a filled-in config looks like (yours will have real
-// values in place of these placeholders):
-//
-// window.FCNY_FIREBASE_CONFIG = {
-//   apiKey: "AIzaSyABCDEF1234567890",
-//   authDomain: "your-project.firebaseapp.com",
-//   databaseURL: "https://your-project-default-rtdb.firebaseio.com",
-//   projectId: "your-project",
-//   storageBucket: "your-project.appspot.com",
-//   messagingSenderId: "1234567890",
-//   appId: "1:1234567890:web:abcdef1234567890"
-// };
+window.FCNY_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyADwZYsUwMBCXSfvWnbNrnrdS0ugEvy3kI",
+  authDomain: "fcny-tourney.firebaseapp.com",
+  // databaseURL: fill this in once Realtime Database is created (step 4
+  // below) - the console shows it at the top of the Realtime Database page,
+  // e.g. "https://fcny-tourney-default-rtdb.<region>.firebasedatabase.app".
+  projectId: "fcny-tourney",
+  storageBucket: "fcny-tourney.firebasestorage.app",
+  messagingSenderId: "222690053523",
+  appId: "1:222690053523:web:003319f445164186952c66"
+};
