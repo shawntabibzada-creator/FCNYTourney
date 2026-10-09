@@ -170,6 +170,8 @@
       renderSyncStatus();
     }).catch(function () {
       alert("Could not connect. Check the code and your Firebase setup, then try again.");
+      if (syncRef) syncRef.off();
+      syncRef = null;
       tournamentCode = null;
       localStorage.removeItem(TOURNAMENT_CODE_KEY);
       renderSyncStatus();
