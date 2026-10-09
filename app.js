@@ -77,6 +77,7 @@
 
   var state = defaultState();
   var activeGroupId = null; // group detail sub-view within the current age group's Groups tab
+  var activeTeamId = null; // team detail sub-view within the current age group's Teams tab
 
   /* ---------- Live Sync (optional) ----------
      When firebase-config.js has a real config, multiple devices can share
@@ -453,6 +454,7 @@
     renderActiveBanner();
     renderAgeGroups();
     renderTeams();
+    if (activeTeamId) renderTeamDetail();
     renderGroupsIndex();
     if (activeGroupId) renderGroupDetail();
     renderBracket();
@@ -498,9 +500,12 @@
     if (select) {
       state.activeAgeGroupId = select.dataset.id;
       activeGroupId = null;
+      activeTeamId = null;
       bracketSelectedTeamIds = [];
       document.getElementById("groupDetail").classList.add("hidden");
       document.getElementById("groupsIndex").classList.remove("hidden");
+      document.getElementById("teamDetail").classList.add("hidden");
+      document.getElementById("teamsIndex").classList.remove("hidden");
       save();
       renderAll();
       return;
@@ -517,6 +522,7 @@
       if (state.activeAgeGroupId === id) {
         state.activeAgeGroupId = state.ageGroups[0] ? state.ageGroups[0].id : null;
         activeGroupId = null;
+        activeTeamId = null;
         bracketSelectedTeamIds = [];
       }
       save();
@@ -564,6 +570,7 @@
       }
       state = normalizeState(parsed);
       activeGroupId = null;
+      activeTeamId = null;
       bracketSelectedTeamIds = [];
       save();
       renderAll();
@@ -584,7 +591,7 @@
     }
     ul.innerHTML = ag.teams.map(function (t) {
       return '<li data-id="' + t.id + '">' +
-        '<span class="name">' + escapeHtml(t.name) + '</span>' +
+        '<span class="name" data-action="open-team" data-id="' + t.id + '">' + escapeHtml(t.name) + '</span>' +
         '<button class="danger" data-action="delete-team" data-id="' + t.id + '">Remove</button>' +
         '</li>';
     }).join("");
@@ -609,9 +616,14 @@
   });
 
   document.getElementById("teamList").addEventListener("click", function (e) {
-    if (viewOnlyMode) return;
     var ag = currentAgeGroup();
     if (!ag) return;
+    var open = e.target.closest('[data-action="open-team"]');
+    if (open) {
+      openTeam(open.dataset.id);
+      return;
+    }
+    if (viewOnlyMode) return;
     var btn = e.target.closest('[data-action="delete-team"]');
     if (!btn) return;
     var id = btn.dataset.id;
@@ -636,6 +648,89 @@
     renderBracket();
     renderAgeGroups();
   });
+
+  function openTeam(id) {
+    activeTeamId = id;
+    document.getElementById("teamsIndex").classList.add("hidden");
+    document.getElementById("teamDetail").classList.remove("hidden");
+    renderTeamDetail();
+  }
+
+  document.getElementById("backToTeams").addEventListener("click", function () {
+    activeTeamId = null;
+    document.getElementById("teamDetail").classList.add("hidden");
+    document.getElementById("teamsIndex").classList.remove("hidden");
+    renderTeams();
+  });
+
+  function renderTeamDetail() {
+    var ag = currentAgeGroup();
+    if (!ag) return;
+    var team = ag.teams.find(function (t) { return t.id === activeTeamId; });
+    if (!team) {
+      activeTeamId = null;
+      document.getElementById("teamDetail").classList.add("hidden");
+      document.getElementById("teamsIndex").classList.remove("hidden");
+      renderTeams();
+      return;
+    }
+
+    document.getElementById("teamDetailName").textContent = team.name;
+
+    var games = [];
+    ag.groups.forEach(function (g) {
+      g.matches.forEach(function (m) {
+        if (m.homeId !== team.id && m.awayId !== team.id) return;
+        var isHome = m.homeId === team.id;
+        games.push({
+          source: g.name,
+          opponentId: isHome ? m.awayId : m.homeId,
+          isHome: isHome,
+          time: m.time,
+          location: m.location,
+          homeScore: m.homeScore,
+          awayScore: m.awayScore
+        });
+      });
+    });
+    ag.bracket.rounds.forEach(function (round) {
+      round.matches.forEach(function (m) {
+        if (m.bye) return;
+        var t1 = resolveTeamId(ag, m.team1Id);
+        var t2 = resolveTeamId(ag, m.team2Id);
+        if (t1 !== team.id && t2 !== team.id) return;
+        var isHome = t1 === team.id;
+        games.push({
+          source: round.name,
+          opponentId: isHome ? t2 : t1,
+          isHome: isHome,
+          time: m.time,
+          location: m.location,
+          homeScore: isHome ? m.score1 : m.score2,
+          awayScore: isHome ? m.score2 : m.score1
+        });
+      });
+    });
+
+    var ul = document.getElementById("teamGamesList");
+    if (games.length === 0) {
+      ul.innerHTML = '<li class="empty-hint" style="justify-content:center;">No games yet.</li>';
+      return;
+    }
+    ul.innerHTML = sortByTime(games).map(function (g) {
+      var played = g.homeScore !== null && g.homeScore !== undefined && g.awayScore !== null && g.awayScore !== undefined;
+      var opponentName = g.opponentId ? teamName(ag, g.opponentId) : "TBD";
+      return '<li class="match-row">' +
+        timeLocationLabel(g) +
+        '<div class="match-line">' +
+          '<span class="match-team">' + escapeHtml(team.name) + '</span>' +
+          '<span class="match-score">' + (played ? g.homeScore + " - " + g.awayScore : "vs") + '</span>' +
+          '<span class="match-team" style="text-align:right;">' + escapeHtml(opponentName) + '</span>' +
+        '</div>' +
+        '<div class="match-source">' + escapeHtml(g.source) + '</div>' +
+      '</li>';
+    }).join("");
+  }
 
   /* ---------- GROUPS ---------- */
 
@@ -860,28 +955,36 @@
     renderBracket();
   });
 
+  // Earliest game first. Matches with no time set keep their original
+  // relative order and sort after every timed match (24-hour "HH:MM"
+  // strings compare correctly as plain text).
+  function sortByTime(list) {
+    return list.slice().sort(function (a, b) {
+      if (a.time && b.time) return a.time < b.time ? -1 : a.time > b.time ? 1 : 0;
+      if (a.time && !b.time) return -1;
+      if (!a.time && b.time) return 1;
+      return 0;
+    });
+  }
+
+  function timeLocationLabel(m) {
+    var parts = [];
+    if (m.time) parts.push(escapeHtml(formatTime(m.time)));
+    if (m.location) parts.push(escapeHtml(m.location));
+    return parts.length ? '<div class="match-time">' + parts.join(" &middot; ") + '</div>' : '';
+  }
+
   function renderMatchList(ag, group) {
     var ul = document.getElementById("matchList");
     if (group.matches.length === 0) {
       ul.innerHTML = '<li class="empty-hint" style="justify-content:center;">No results yet.</li>';
       return;
     }
-    var sortedMatches = group.matches.slice().sort(function (a, b) {
-      // Earliest game first. Matches with no time set keep their original
-      // relative order and sort after every timed match (24-hour "HH:MM"
-      // strings compare correctly as plain text).
-      if (a.time && b.time) return a.time < b.time ? -1 : a.time > b.time ? 1 : 0;
-      if (a.time && !b.time) return -1;
-      if (!a.time && b.time) return 1;
-      return 0;
-    });
+    var sortedMatches = sortByTime(group.matches);
     ul.innerHTML = sortedMatches.map(function (m) {
       var played = m.homeScore !== null && m.homeScore !== undefined && m.awayScore !== null && m.awayScore !== undefined;
-      var timeLocationParts = [];
-      if (m.time) timeLocationParts.push(escapeHtml(formatTime(m.time)));
-      if (m.location) timeLocationParts.push(escapeHtml(m.location));
       return '<li class="match-row" data-id="' + m.id + '">' +
-        (timeLocationParts.length ? '<div class="match-time">' + timeLocationParts.join(" &middot; ") + '</div>' : '') +
+        timeLocationLabel(m) +
         '<div class="match-line">' +
           '<span class="match-team">' + escapeHtml(teamName(ag, m.homeId)) + '</span>' +
           '<span class="match-score">' + (played ? m.homeScore + " - " + m.awayScore : "vs") + '</span>' +

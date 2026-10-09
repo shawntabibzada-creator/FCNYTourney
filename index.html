@@ -59,17 +59,29 @@
 
     <!-- TEAMS -->
     <section id="page-teams" class="page hidden">
-      <h2 class="page-title">Teams</h2>
       <div id="teamsEmptyAgeGroup" class="empty-state hidden">
+        <h2 class="page-title">Teams</h2>
         <p>No age group selected yet.</p>
         <button type="button" data-action="goto-ages">Set up an age group</button>
       </div>
       <div id="teamsContent">
-        <form id="addTeamForm" class="row-form">
-          <input id="teamNameInput" type="text" placeholder="Team name" required autocomplete="off">
-          <button type="submit">Add</button>
-        </form>
-        <ul id="teamList" class="list"></ul>
+        <div id="teamsIndex">
+          <h2 class="page-title">Teams</h2>
+          <form id="addTeamForm" class="row-form">
+            <input id="teamNameInput" type="text" placeholder="Team name" required autocomplete="off">
+            <button type="submit">Add</button>
+          </form>
+          <ul id="teamList" class="list"></ul>
+        </div>
+
+        <div id="teamDetail" class="hidden">
+          <button id="backToTeams" class="link-btn">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3 5 8l5 5"/></svg>
+            All teams
+          </button>
+          <h2 class="page-title" id="teamDetailName"></h2>
+          <ul id="teamGamesList" class="list"></ul>
+        </div>
       </div>
     </section>
 
