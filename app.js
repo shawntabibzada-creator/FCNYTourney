@@ -25,8 +25,20 @@
       ag.name = ag.name || "Age Group";
       ag.teams = Array.isArray(ag.teams) ? ag.teams : [];
       ag.groups = Array.isArray(ag.groups) ? ag.groups : [];
+      // Firebase Realtime Database drops any key whose value is an empty
+      // array when it's written, and never re-adds it on read. A group with
+      // no results yet, or no teams assigned yet, comes back from Firebase
+      // with teamIds/matches missing entirely rather than []; without this,
+      // every forEach/map over them throws.
+      ag.groups.forEach(function (g) {
+        g.teamIds = Array.isArray(g.teamIds) ? g.teamIds : [];
+        g.matches = Array.isArray(g.matches) ? g.matches : [];
+      });
       ag.bracket = ag.bracket && typeof ag.bracket === "object" ? ag.bracket : { rounds: [] };
       ag.bracket.rounds = Array.isArray(ag.bracket.rounds) ? ag.bracket.rounds : [];
+      ag.bracket.rounds.forEach(function (r) {
+        r.matches = Array.isArray(r.matches) ? r.matches : [];
+      });
     });
     var activeId = parsed && parsed.activeAgeGroupId;
     var activeExists = ageGroups.some(function (a) { return a.id === activeId; });
