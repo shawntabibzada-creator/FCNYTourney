@@ -866,7 +866,16 @@
       ul.innerHTML = '<li class="empty-hint" style="justify-content:center;">No results yet.</li>';
       return;
     }
-    ul.innerHTML = group.matches.slice().reverse().map(function (m) {
+    var sortedMatches = group.matches.slice().sort(function (a, b) {
+      // Earliest game first. Matches with no time set keep their original
+      // relative order and sort after every timed match (24-hour "HH:MM"
+      // strings compare correctly as plain text).
+      if (a.time && b.time) return a.time < b.time ? -1 : a.time > b.time ? 1 : 0;
+      if (a.time && !b.time) return -1;
+      if (!a.time && b.time) return 1;
+      return 0;
+    });
+    ul.innerHTML = sortedMatches.map(function (m) {
       var played = m.homeScore !== null && m.homeScore !== undefined && m.awayScore !== null && m.awayScore !== undefined;
       var timeLocationParts = [];
       if (m.time) timeLocationParts.push(escapeHtml(formatTime(m.time)));
