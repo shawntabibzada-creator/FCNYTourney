@@ -684,6 +684,9 @@
         var isHome = m.homeId === team.id;
         games.push({
           source: g.name,
+          type: "group",
+          containerId: g.id,
+          matchId: m.id,
           opponentId: isHome ? m.awayId : m.homeId,
           isHome: isHome,
           time: m.time,
@@ -702,6 +705,9 @@
         var isHome = t1 === team.id;
         games.push({
           source: round.name,
+          type: "bracket",
+          containerId: round.id,
+          matchId: m.id,
           opponentId: isHome ? t2 : t1,
           isHome: isHome,
           time: m.time,
@@ -728,9 +734,72 @@
           '<span class="match-team" style="text-align:right;">' + escapeHtml(opponentName) + '</span>' +
         '</div>' +
         '<div class="match-source">' + escapeHtml(g.source) + '</div>' +
+        (g.opponentId ?
+          '<div class="match-actions">' +
+            '<button class="icon-btn" data-action="edit-team-game" data-type="' + g.type + '" data-container-id="' + g.containerId + '" data-match-id="' + g.matchId + '" data-is-home="' + g.isHome + '" title="Edit score">Edit</button>' +
+          '</div>' : '') +
       '</li>';
     }).join("");
   }
+
+  document.getElementById("teamGamesList").addEventListener("click", function (e) {
+    if (viewOnlyMode) return;
+    var btn = e.target.closest('[data-action="edit-team-game"]');
+    if (!btn) return;
+    var ag = currentAgeGroup();
+    var team = ag && ag.teams.find(function (t) { return t.id === activeTeamId; });
+    if (!ag || !team) return;
+
+    var isHome = btn.dataset.isHome === "true";
+    var ownLabel = team.name, oppLabel;
+    var match, timeField, locationField;
+
+    if (btn.dataset.type === "group") {
+      var group = ag.groups.find(function (g) { return g.id === btn.dataset.containerId; });
+      match = group && group.matches.find(function (m) { return m.id === btn.dataset.matchId; });
+      if (!match) return;
+      oppLabel = teamName(ag, isHome ? match.awayId : match.homeId);
+    } else {
+      var round = ag.bracket.rounds.find(function (r) { return r.id === btn.dataset.containerId; });
+      match = round && round.matches.find(function (m) { return m.id === btn.dataset.matchId; });
+      if (!match) return;
+      var oppId = resolveTeamId(ag, isHome ? match.team2Id : match.team1Id);
+      oppLabel = oppId ? teamName(ag, oppId) : "Opponent";
+    }
+
+    var ownScoreRaw = isHome ? match.homeScore : match.awayScore;
+    var oppScoreRaw = isHome ? match.awayScore : match.homeScore;
+    if (btn.dataset.type === "bracket") {
+      ownScoreRaw = isHome ? match.score1 : match.score2;
+      oppScoreRaw = isHome ? match.score2 : match.score1;
+    }
+
+    var os = prompt(ownLabel + " score:", ownScoreRaw === null || ownScoreRaw === undefined ? "" : ownScoreRaw);
+    if (os === null) return;
+    var ps = prompt(oppLabel + " score:", oppScoreRaw === null || oppScoreRaw === undefined ? "" : oppScoreRaw);
+    if (ps === null) return;
+    var tm = prompt("Time (e.g. 14:30), leave blank for none:", match.time || "");
+    if (tm === null) return;
+    var loc = prompt("Field (e.g. Field #7), leave blank for none:", match.location || "");
+    if (loc === null) return;
+
+    var ownScore = os.trim() === "" ? null : Math.max(0, parseInt(os, 10) || 0);
+    var oppScore = ps.trim() === "" ? null : Math.max(0, parseInt(ps, 10) || 0);
+    match.time = tm.trim() === "" ? null : tm.trim();
+    match.location = loc.trim() === "" ? null : loc.trim();
+
+    if (btn.dataset.type === "group") {
+      match.homeScore = isHome ? ownScore : oppScore;
+      match.awayScore = isHome ? oppScore : ownScore;
+    } else {
+      match.score1 = isHome ? ownScore : oppScore;
+      match.score2 = isHome ? oppScore : ownScore;
+      match.winnerId = null; // recompute from score unless a draw override is chosen again on the Bracket tab
+    }
+
+    save();
+    renderAll();
+  });
 
   /* ---------- GROUPS ---------- */
 
