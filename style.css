@@ -89,7 +89,7 @@ html, body {
   gap: 10px;
   padding: 10px 16px;
   background: var(--on-brand-fill);
-  border-bottom: 1px solid var(--on-brand-line);
+  border: 1px solid var(--on-brand-line);
   border-left: 4px solid var(--on-brand);
   cursor: pointer;
 }
@@ -649,4 +649,32 @@ table.standings td.pts { font-weight: 700; color: var(--accent); }
   background: var(--surface);
   border-top-color: var(--surface);
   font-weight: 800;
+}
+
+/* Parent-facing read-only view (?view=... link). Hide every action that
+   mutates data; leave selects/inputs showing their values but disabled so
+   a parent can still see picks, scores, and standings-slot wiring. JS also
+   guards every mutating handler directly, so this is belt-and-suspenders,
+   not the only thing stopping an edit. */
+body.view-only #addAgeGroupForm,
+body.view-only #addTeamForm,
+body.view-only #addGroupForm,
+body.view-only #addMatchForm,
+body.view-only #bracketBuild,
+body.view-only #resetBracketBtn,
+body.view-only #backupSection,
+body.view-only button.danger,
+body.view-only button.icon-btn,
+body.view-only .switch-hint {
+  display: none !important;
+}
+body.view-only .chip[data-action="toggle-team"],
+body.view-only .chip[data-action="toggle-bracket-team"] {
+  pointer-events: none;
+}
+body.view-only #bracketWrap select,
+body.view-only #bracketWrap input,
+body.view-only .draw-picker-slot select {
+  pointer-events: none;
+  opacity: 0.85;
 }

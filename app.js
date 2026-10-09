@@ -87,6 +87,53 @@
   }
   var tournamentCode = firebaseEnabled ? localStorage.getItem(TOURNAMENT_CODE_KEY) : null;
   var syncRef = null;
+
+  // Parent-facing read-only view links. The code itself is never put in a
+  // shared link in plain text (anyone who read it off the URL could paste
+  // it into the normal Connect box and get full edit access), so the link
+  // carries a scrambled token instead. This is obfuscation, not real
+  // security: the app's own source is public on GitHub, so a technical
+  // person could reverse it. It is meant to stop a casual link recipient
+  // from reading the code off the URL, not to resist a determined one.
+  function obfuscateCode(code) {
+    return btoa(encodeURIComponent(code.split("").reverse().join("")));
+  }
+  function deobfuscateCode(token) {
+    try {
+      return decodeURIComponent(atob(token)).split("").reverse().join("");
+    } catch (e) {
+      return null;
+    }
+  }
+
+  var viewOnlyMode = false;
+  var viewOnlyParam = new URLSearchParams(window.location.search).get("view");
+  if (firebaseEnabled && viewOnlyParam) {
+    var decodedViewCode = deobfuscateCode(viewOnlyParam);
+    if (decodedViewCode) {
+      viewOnlyMode = true;
+      tournamentCode = decodedViewCode;
+    }
+  }
+
+  function connectViewOnly(code) {
+    if (!firebaseEnabled || !code) return;
+    syncRef = db.ref("tournaments/" + code);
+    syncRef.on("value", function (snap) {
+      // A parent browsing one age group shouldn't get yanked to whichever
+      // age group a coach has active just because someone, anywhere in the
+      // tournament, saved an edit. Keep this viewer's own navigation.
+      var keepActiveId = state ? state.activeAgeGroupId : null;
+      state = normalizeState(snap.val() || {});
+      if (keepActiveId && state.ageGroups.some(function (a) { return a.id === keepActiveId; })) {
+        state.activeAgeGroupId = keepActiveId;
+      }
+      renderAll();
+    }, function () {
+      var box = document.getElementById("syncBox");
+      if (box) box.innerHTML = '<p class="hint-text">Could not load this tournament. The link may be out of date.</p>';
+    });
+  }
   // Sync writes echo back to every listener, including the one that sent
   // them. Comparing against the JSON we just sent is how we recognize "this
   // is our own change coming back" and skip re-rendering for it; without
@@ -145,6 +192,12 @@
   function renderSyncStatus() {
     var box = document.getElementById("syncBox");
     if (!box) return;
+    if (viewOnlyMode) {
+      // Never render the actual code here. Anyone looking at this page is,
+      // by definition, someone the coach only gave view access to.
+      box.innerHTML = '<p class="hint-text">Live view &middot; read-only. You\'re seeing this tournament update in real time, but can\'t make changes here.</p>';
+      return;
+    }
     if (!firebaseEnabled) {
       box.innerHTML = '<p class="hint-text">Live sync needs a one-time setup by whoever owns this copy of the app. See README.md.</p>';
       return;
@@ -155,7 +208,9 @@
           '<span><span class="active-banner-label">Connected</span><span class="active-banner-name">' + escapeHtml(tournamentCode) + '</span></span>' +
           '<button class="danger" data-action="disconnect-sync" type="button">Disconnect</button>' +
         '</div>' +
-        '<p class="hint-text">Anyone who enters this exact code sees and edits this tournament live, on their own phone.</p>';
+        '<p class="hint-text">Anyone who enters this exact code sees and edits this tournament live, on their own phone.</p>' +
+        '<button id="shareViewLinkBtn" type="button" class="secondary">Share view-only link for parents</button>' +
+        '<p class="hint-text">Copies a link that shows this tournament live, without the ability to edit it, and without the tournament code visible anywhere in the link or the page.</p>';
     } else {
       box.innerHTML =
         '<form id="connectSyncForm" class="row-form">' +
@@ -167,6 +222,7 @@
   }
 
   function save() {
+    if (viewOnlyMode) return; // belt-and-suspenders: nothing here should ever call save(), but never persist from a view-only page regardless.
     var json = JSON.stringify(state);
     if (firebaseEnabled && tournamentCode && syncRef) {
       lastSyncedJson = json;
@@ -411,6 +467,7 @@
 
   document.getElementById("addAgeGroupForm").addEventListener("submit", function (e) {
     e.preventDefault();
+    if (viewOnlyMode) return;
     var input = document.getElementById("ageGroupNameInput");
     var name = input.value.trim();
     if (!name) return;
@@ -436,6 +493,7 @@
     }
     var del = e.target.closest('[data-action="delete-ag"]');
     if (del) {
+      if (viewOnlyMode) return;
       var id = del.dataset.id;
       var doomed = state.ageGroups.find(function (a) { return a.id === id; });
       if (!doomed) return;
@@ -472,6 +530,7 @@
   });
 
   document.getElementById("importFile").addEventListener("change", function (e) {
+    if (viewOnlyMode) return;
     var file = e.target.files[0];
     if (!file) return;
     var reader = new FileReader();
@@ -519,6 +578,7 @@
 
   document.getElementById("addTeamForm").addEventListener("submit", function (e) {
     e.preventDefault();
+    if (viewOnlyMode) return;
     var ag = currentAgeGroup();
     if (!ag) return;
     var input = document.getElementById("teamNameInput");
@@ -535,6 +595,7 @@
   });
 
   document.getElementById("teamList").addEventListener("click", function (e) {
+    if (viewOnlyMode) return;
     var ag = currentAgeGroup();
     if (!ag) return;
     var btn = e.target.closest('[data-action="delete-team"]');
@@ -584,6 +645,7 @@
 
   document.getElementById("addGroupForm").addEventListener("submit", function (e) {
     e.preventDefault();
+    if (viewOnlyMode) return;
     var ag = currentAgeGroup();
     if (!ag) return;
     var input = document.getElementById("groupNameInput");
@@ -606,6 +668,7 @@
     }
     var del = e.target.closest('[data-action="delete-group"]');
     if (del) {
+      if (viewOnlyMode) return;
       if (!confirm("Delete this group and all its results?")) return;
       ag.groups = ag.groups.filter(function (g) { return g.id !== del.dataset.id; });
       save();
@@ -675,6 +738,7 @@
   }
 
   document.getElementById("groupTeamAssign").addEventListener("click", function (e) {
+    if (viewOnlyMode) return;
     var ag = currentAgeGroup();
     var group = currentGroup(ag);
     if (!group) return;
@@ -694,6 +758,7 @@
   });
 
   document.getElementById("groupTeamList").addEventListener("click", function (e) {
+    if (viewOnlyMode) return;
     var ag = currentAgeGroup();
     var group = currentGroup(ag);
     if (!group) return;
@@ -755,6 +820,7 @@
 
   document.getElementById("addMatchForm").addEventListener("submit", function (e) {
     e.preventDefault();
+    if (viewOnlyMode) return;
     var ag = currentAgeGroup();
     var group = currentGroup(ag);
     if (!group) return;
@@ -807,6 +873,7 @@
   }
 
   document.getElementById("matchList").addEventListener("click", function (e) {
+    if (viewOnlyMode) return;
     var ag = currentAgeGroup();
     var group = currentGroup(ag);
     if (!group) return;
@@ -920,6 +987,7 @@
   }
 
   document.getElementById("bracketTeamSelect").addEventListener("click", function (e) {
+    if (viewOnlyMode) return;
     var chip = e.target.closest('[data-action="toggle-bracket-team"]');
     if (!chip) return;
     var id = chip.dataset.id;
@@ -931,6 +999,7 @@
   });
 
   document.getElementById("generateBracketBtn").addEventListener("click", function () {
+    if (viewOnlyMode) return;
     var ag = currentAgeGroup();
     if (!ag) return;
     if (bracketSelectedTeamIds.length < 2) {
@@ -944,6 +1013,7 @@
   });
 
   document.getElementById("resetBracketBtn").addEventListener("click", function () {
+    if (viewOnlyMode) return;
     var ag = currentAgeGroup();
     if (!ag) return;
     if (!confirm("Reset the bracket? This clears every matchup and score you've entered so you can pick teams and generate it again.")) return;
@@ -1155,6 +1225,7 @@
   }
 
   document.getElementById("bracketWrap").addEventListener("change", function (e) {
+    if (viewOnlyMode) return;
     var ag = currentAgeGroup();
     if (!ag) return;
     var field = e.target.dataset.field;
@@ -1189,6 +1260,7 @@
   document.getElementById("syncBox").addEventListener("submit", function (e) {
     if (e.target.id !== "connectSyncForm") return;
     e.preventDefault();
+    if (viewOnlyMode) return;
     var input = document.getElementById("syncCodeInput");
     var code = input.value.trim();
     if (!code) return;
@@ -1196,17 +1268,36 @@
   });
 
   document.getElementById("syncBox").addEventListener("click", function (e) {
+    if (viewOnlyMode) return;
     if (e.target.closest('[data-action="disconnect-sync"]')) {
       if (!confirm("Disconnect from live sync? This device will go back to using only its own local data.")) return;
       disconnectSync();
+    }
+    if (e.target.id === "shareViewLinkBtn") {
+      var link = window.location.origin + window.location.pathname + "?view=" + obfuscateCode(tournamentCode);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link).then(function () {
+          alert("Link copied. Share it with parents: it shows the tournament live, with no edit access.");
+        }).catch(function () {
+          prompt("Copy this link to share with parents:", link);
+        });
+      } else {
+        prompt("Copy this link to share with parents:", link);
+      }
     }
   });
 
   /* ---------- init ---------- */
 
-  state = load();
-  renderAll();
-  if (firebaseEnabled && tournamentCode) connectSync(tournamentCode);
+  if (viewOnlyMode) {
+    document.body.classList.add("view-only");
+    renderAll();
+    connectViewOnly(tournamentCode);
+  } else {
+    state = load();
+    renderAll();
+    if (firebaseEnabled && tournamentCode) connectSync(tournamentCode);
+  }
   renderSyncStatus();
   showPage("ages");
 })();

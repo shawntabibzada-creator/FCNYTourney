@@ -46,13 +46,15 @@
       <h3>Live Sync</h3>
       <div id="syncBox"></div>
 
-      <h3>Backup</h3>
-      <p class="hint-text">Without Live Sync connected, everything is saved on this device only. Export a backup any time to keep a copy or move it to another phone.</p>
-      <div class="backup-row">
-        <button id="exportBtn" type="button">Export Backup</button>
-        <button id="importBtn" type="button" class="secondary">Restore Backup</button>
+      <div id="backupSection">
+        <h3>Backup</h3>
+        <p class="hint-text">Without Live Sync connected, everything is saved on this device only. Export a backup any time to keep a copy or move it to another phone.</p>
+        <div class="backup-row">
+          <button id="exportBtn" type="button">Export Backup</button>
+          <button id="importBtn" type="button" class="secondary">Restore Backup</button>
+        </div>
+        <input id="importFile" type="file" accept="application/json" class="hidden">
       </div>
-      <input id="importFile" type="file" accept="application/json" class="hidden">
     </section>
 
     <!-- TEAMS -->
