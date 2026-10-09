@@ -417,8 +417,11 @@ table.standings td.pts { font-weight: 700; color: var(--accent); }
   font-size: 13px;
   color: var(--on-brand-dim);
 }
-.match-time-row input[type="time"] {
+.match-time-row input[type="time"],
+.match-time-row input[type="text"] {
   padding: 8px 10px;
+  flex: 1;
+  min-width: 0;
 }
 
 .match-time {
@@ -547,8 +550,11 @@ table.standings td.pts { font-weight: 700; color: var(--accent); }
   font-size: 13px;
   color: var(--text-dim);
 }
-.bracket-time-row input[type="time"] {
+.bracket-time-row input[type="time"],
+.bracket-time-row input[type="text"] {
   padding: 8px 10px;
+  flex: 1;
+  min-width: 0;
 }
 
 .bracket-slot {

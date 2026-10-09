@@ -763,6 +763,7 @@
     var homeScoreRaw = document.getElementById("matchHomeScore").value;
     var awayScoreRaw = document.getElementById("matchAwayScore").value;
     var timeRaw = document.getElementById("matchTimeInput").value;
+    var locationRaw = document.getElementById("matchLocationInput").value;
 
     if (!homeId || !awayId) return;
     if (homeId === awayId) { alert("Pick two different teams."); return; }
@@ -770,7 +771,7 @@
     var homeScore = homeScoreRaw === "" ? null : Math.max(0, parseInt(homeScoreRaw, 10) || 0);
     var awayScore = awayScoreRaw === "" ? null : Math.max(0, parseInt(awayScoreRaw, 10) || 0);
 
-    group.matches.push({ id: uid(), homeId: homeId, awayId: awayId, homeScore: homeScore, awayScore: awayScore, time: timeRaw || null });
+    group.matches.push({ id: uid(), homeId: homeId, awayId: awayId, homeScore: homeScore, awayScore: awayScore, time: timeRaw || null, location: locationRaw.trim() || null });
 
     e.target.reset();
     save();
@@ -787,8 +788,11 @@
     }
     ul.innerHTML = group.matches.slice().reverse().map(function (m) {
       var played = m.homeScore !== null && m.homeScore !== undefined && m.awayScore !== null && m.awayScore !== undefined;
+      var timeLocationParts = [];
+      if (m.time) timeLocationParts.push(escapeHtml(formatTime(m.time)));
+      if (m.location) timeLocationParts.push(escapeHtml(m.location));
       return '<li class="match-row" data-id="' + m.id + '">' +
-        (m.time ? '<div class="match-time">' + escapeHtml(formatTime(m.time)) + '</div>' : '') +
+        (timeLocationParts.length ? '<div class="match-time">' + timeLocationParts.join(" &middot; ") + '</div>' : '') +
         '<div class="match-line">' +
           '<span class="match-team">' + escapeHtml(teamName(ag, m.homeId)) + '</span>' +
           '<span class="match-score">' + (played ? m.homeScore + " - " + m.awayScore : "vs") + '</span>' +
@@ -817,9 +821,12 @@
       if (as === null) return;
       var tm = prompt("Time (e.g. 14:30), leave blank for none:", match.time || "");
       if (tm === null) return;
+      var loc = prompt("Field (e.g. Field #7), leave blank for none:", match.location || "");
+      if (loc === null) return;
       match.homeScore = hs.trim() === "" ? null : Math.max(0, parseInt(hs, 10) || 0);
       match.awayScore = as.trim() === "" ? null : Math.max(0, parseInt(as, 10) || 0);
       match.time = tm.trim() === "" ? null : tm.trim();
+      match.location = loc.trim() === "" ? null : loc.trim();
       save();
       renderStandings(ag, group);
       renderMatchList(ag, group);
@@ -872,10 +879,10 @@
 
     var round1Matches = [];
     for (var i = 0; i < realCount; i += 2) {
-      round1Matches.push({ id: uid(), team1Id: teamIds[i], team2Id: teamIds[i + 1], score1: null, score2: null, winnerId: null, time: null });
+      round1Matches.push({ id: uid(), team1Id: teamIds[i], team2Id: teamIds[i + 1], score1: null, score2: null, winnerId: null, time: null, location: null });
     }
     for (var j = realCount; j < n; j++) {
-      round1Matches.push({ id: uid(), team1Id: teamIds[j], team2Id: null, score1: null, score2: null, winnerId: null, time: null, bye: true });
+      round1Matches.push({ id: uid(), team1Id: teamIds[j], team2Id: null, score1: null, score2: null, winnerId: null, time: null, location: null, bye: true });
     }
 
     var rounds = [{ id: uid(), name: "", matches: round1Matches }];
@@ -886,7 +893,7 @@
       var nextEntrants = [];
       for (var k = 0; k < entrants.length; k += 2) {
         var matchId = uid();
-        matches.push({ id: matchId, team1Id: entrants[k], team2Id: entrants[k + 1], score1: null, score2: null, winnerId: null, time: null });
+        matches.push({ id: matchId, team1Id: entrants[k], team2Id: entrants[k + 1], score1: null, score2: null, winnerId: null, time: null, location: null });
         nextEntrants.push("winner:" + matchId);
       }
       rounds.push({ id: uid(), name: "", matches: matches });
@@ -1095,6 +1102,7 @@
     wrap.innerHTML = ag.bracket.rounds.map(function (round, roundIndex) {
       var matchesHtml = round.matches.map(function (m, mIndex) {
         var timeInput = '<input type="time" class="bracket-time" data-field="time" data-round="' + round.id + '" data-match="' + m.id + '" value="' + (m.time || "") + '">';
+        var locationInput = '<input type="text" class="bracket-location" placeholder="Field #7" data-field="location" data-round="' + round.id + '" data-match="' + m.id + '" value="' + escapeHtml(m.location || "") + '">';
 
         if (m.bye) {
           var byeTeamId = resolveTeamId(ag, m.team1Id);
@@ -1114,8 +1122,12 @@
         var sameTeam = isSameTeamBothSides(ag, m);
         var elimText = eliminatedHtmlFor(ag, m, winnerId, t1, t2);
 
+        var labelParts = [];
+        if (m.time) labelParts.push(escapeHtml(formatTime(m.time)));
+        if (m.location) labelParts.push(escapeHtml(m.location));
+
         return '<div class="bracket-match" data-round="' + round.id + '" data-match="' + m.id + '">' +
-          '<div class="bracket-match-label">Match ' + (mIndex + 1) + (m.time ? ' &middot; ' + escapeHtml(formatTime(m.time)) : '') + '</div>' +
+          '<div class="bracket-match-label">Match ' + (mIndex + 1) + (labelParts.length ? ' &middot; ' + labelParts.join(" &middot; ") : '') + '</div>' +
           '<div class="bracket-slot' + (winnerId && winnerId === t1 ? " winner" : "") + (winnerId && winnerId !== t1 ? " eliminated" : "") + '">' +
             '<select data-field="team1Id" data-round="' + round.id + '" data-match="' + m.id + '">' + teamOptions(ag, m.team1Id, roundIndex) + '</select>' +
             '<input type="number" min="0" inputmode="numeric" placeholder="-" data-field="score1" data-round="' + round.id + '" data-match="' + m.id + '" value="' + (m.score1 === null || m.score1 === undefined ? "" : m.score1) + '">' +
@@ -1131,6 +1143,7 @@
           '<div class="match-warn"' + (sameTeam ? '' : ' style="display:none;"') + '>Same team on both sides.</div>' +
           '<div class="eliminated-tag"' + (elimText ? '' : ' style="display:none;"') + '>' + elimText + '</div>' +
           '<div class="bracket-time-row"><label>Time</label>' + timeInput + '</div>' +
+          '<div class="bracket-time-row"><label>Field</label>' + locationInput + '</div>' +
         '</div>';
       }).join("");
 
@@ -1162,6 +1175,8 @@
       match.winnerId = e.target.value || null;
     } else if (field === "time") {
       match.time = e.target.value || null;
+    } else if (field === "location") {
+      match.location = e.target.value.trim() || null;
     }
 
     save();
